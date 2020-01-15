@@ -63,21 +63,21 @@ from cmk.gui.valuespec import (
 
 
 @connector_type_registry.register
-class AccessCMDBConnectorType(ConnectorType):
+class CSVConnectorType(ConnectorType):
     def name(self):
-        return "accesscmdb"
+        return "csv"
 
     def title(self):
-        return _("Access CMDB")
+        return _("CSV Export")
 
     def description(self):
-        return _("Connector for the Access CMDB")
+        return _("Connector for importing data from a CSV file.")
 
 
 @connector_config_registry.register
-class AccessCMDBConnectorConfig(ConnectorConfig):
+class CSVConnectorConfig(ConnectorConfig):
     def name(self):
-        return "accesscmdb"
+        return "csv"
 
     def _connector_attributes_to_config(self):
         # type: () -> Dict
@@ -93,11 +93,11 @@ class AccessCMDBConnectorConfig(ConnectorConfig):
 
 
 @connector_registry.register
-class AccessCMDBConnector(Connector):
-    connector_type = AccessCMDBConnectorType
+class CSVConnector(Connector):
+    connector_type = CSVConnectorType
 
     def __init__(self, logger, config, web_api, connection_id, omd_site):
-        super(AccessCMDBConnector, self).__init__(logger, config, web_api, connection_id, omd_site)
+        super(CSVConnector, self).__init__(logger, config, web_api, connection_id, omd_site)
         self._type = self.connector_type()
 
     def _execution_interval(self):
@@ -110,7 +110,7 @@ class AccessCMDBConnector(Connector):
             cmdb_hosts = [row for row in reader]
 
         self._logger.info("Found %d CMDB hosts", len(cmdb_hosts))
-        return Phase1Result(AccessCMDBHosts(cmdb_hosts), self._status)
+        return Phase1Result(CSVHosts(cmdb_hosts), self._status)
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
@@ -118,7 +118,7 @@ class AccessCMDBConnector(Connector):
             if isinstance(phase1_result.connector_object, NullObject):
                 raise ValueError("Remote site has not completed phase 1 yet")
 
-            if not isinstance(phase1_result.connector_object, AccessCMDBHosts):
+            if not isinstance(phase1_result.connector_object, CSVHosts):
                 raise ValueError("Got invalid connector object as phase 1 result: %r" %
                                  phase1_result.connector_object)
 
@@ -240,7 +240,7 @@ class AccessCMDBConnector(Connector):
 
 
 @connector_object_registry.register
-class AccessCMDBHosts(ConnectorObject):
+class CSVHosts(ConnectorObject):
     def __init__(self, cmdb_hosts):
         self.cmdb_hosts = cmdb_hosts
 
@@ -257,9 +257,9 @@ class AccessCMDBHosts(ConnectorObject):
 
 
 @connector_parameters_registry.register
-class AccessCMDBParameters(ConnectorParameters):
+class CSVParameters(ConnectorParameters):
     def connector_type(self):
-        return connector_type_registry["accesscmdb"]
+        return connector_type_registry["csv"]
 
     def valuespec(self):
         return Dictionary(
@@ -271,8 +271,7 @@ class AccessCMDBParameters(ConnectorParameters):
                 )),
                 ("path", AbsoluteDirname(
                     title=_("Path of to the CSV file to import."),
-                    help=_("This is the path used for reading the CSV file "
-                           "containing an export of the Access CMDB."),
+                    help=_("This is the path to the CSV file."),
                     allow_empty=False,
                     # TODO: Path validation? lib/python/cmk/gui/backup.py line 1263
                 )),
