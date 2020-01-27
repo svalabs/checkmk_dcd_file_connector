@@ -177,15 +177,16 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to create")
             return []
 
-        created_host_names = self._create_servicenow_hosts(hosts_to_create)
+        created_host_names = self._create_hosts(hosts_to_create)
         self._logger.debug("Created %d hosts", len(created_host_names))
         if not created_host_names:
             return []
-        self._discover_servicenow_hosts(created_host_names)
+
+        self._discover_hosts(created_host_names)
 
         return created_host_names
 
-    def _create_servicenow_hosts(self, hosts_to_create):
+    def _create_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
         self._logger.debug(
             "Creating %d hosts (%s)",
@@ -199,7 +200,7 @@ class CSVConnector(Connector):
 
         return result["succeeded_hosts"]
 
-    def _discover_servicenow_hosts(self, host_names_to_discover):
+    def _discover_hosts(self, host_names_to_discover):
         # type: (List[str]) -> None
         self._logger.debug("Discovering services on %d hosts (%s)", len(host_names_to_discover),
                            host_names_to_discover)
