@@ -148,6 +148,8 @@ class CSVConnector(Connector):
 
     def _transform_hosts_for_web_api(self, hosts):
         # type: (List[Dict]) -> List[Tuple[str, str, Dict]]
+        folder = 'cmdb'
+
         transformed_hosts = []
         for host in hosts:
             # NOTE: The test data for host_name is empty so we use the readable name here for simplicity.
@@ -155,7 +157,7 @@ class CSVConnector(Connector):
             #       It would be possible to use attributes from the CMDB here.
             transformed_hosts.append((
                 self._normalize_hostname(host['HOSTNAME']),
-                'cmdb',
+                folder,
                 {
                     'ipaddress': '127.0.0.1',
                     # TODO: create label - how?
