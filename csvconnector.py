@@ -65,10 +65,10 @@ from cmk.gui.valuespec import (
 @connector_type_registry.register
 class CSVConnectorType(ConnectorType):
     def name(self):
-        return "csv"
+        return "csvconnector"
 
     def title(self):
-        return _("CSV Export")
+        return _("CSV import")
 
     def description(self):
         return _("Connector for importing data from a CSV file.")
@@ -77,7 +77,7 @@ class CSVConnectorType(ConnectorType):
 @connector_config_registry.register
 class CSVConnectorConfig(ConnectorConfig):
     def name(self):
-        return "csv"
+        return "csvconnector"
 
     def _connector_attributes_to_config(self):
         # type: () -> Dict
@@ -240,7 +240,7 @@ class CSVConnector(Connector):
 
 
 @connector_object_registry.register
-class CSVHosts(ConnectorObject):
+class CSVConnectorHosts(ConnectorObject):
     def __init__(self, cmdb_hosts):
         self.cmdb_hosts = cmdb_hosts
 
@@ -257,9 +257,9 @@ class CSVHosts(ConnectorObject):
 
 
 @connector_parameters_registry.register
-class CSVParameters(ConnectorParameters):
+class CSVConnectorParameters(ConnectorParameters):
     def connector_type(self):
-        return connector_type_registry["csv"]
+        return connector_type_registry["csvconnector"]
 
     def valuespec(self):
         return Dictionary(
@@ -274,6 +274,7 @@ class CSVParameters(ConnectorParameters):
                     help=_("This is the path to the CSV file."),
                     allow_empty=False,
                     # TODO: Path validation? lib/python/cmk/gui/backup.py line 1263
+                    # readable file
                 )),
             ],
             optional_keys=[],
