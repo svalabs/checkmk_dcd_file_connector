@@ -23,10 +23,8 @@ import csv
 import time
 
 from typing import (  # pylint: disable=unused-import
-    Any, Dict, List, Tuple,
+    Dict, List, Tuple,
 )
-
-import requests
 
 from cmk.utils.i18n import _
 
@@ -47,11 +45,8 @@ from cmk.cee.dcd.config import (
     ConnectorConfig,
 )
 
-from cmk.gui.i18n import _
-
 from cmk.gui.cee.plugins.wato.dcd import (
     connector_parameters_registry,
-    connector_type_registry,
     ConnectorParameters,
 )
 
@@ -97,6 +92,7 @@ class CSVConnector(Connector):
     connector_type = CSVConnectorType
 
     def __init__(self, logger, config, web_api, connection_id, omd_site):
+        self._connection_config = CSVConnectorConfig()
         super(CSVConnector, self).__init__(logger, config, web_api, connection_id, omd_site)
         self._type = self.connector_type()
 
@@ -110,7 +106,7 @@ class CSVConnector(Connector):
             cmdb_hosts = [row for row in reader]
 
         self._logger.info("Found %d CMDB hosts", len(cmdb_hosts))
-        return Phase1Result(CSVHosts(cmdb_hosts), self._status)
+        return Phase1Result(CSVConnectorHosts(cmdb_hosts), self._status)
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
@@ -118,7 +114,7 @@ class CSVConnector(Connector):
             if isinstance(phase1_result.connector_object, NullObject):
                 raise ValueError("Remote site has not completed phase 1 yet")
 
-            if not isinstance(phase1_result.connector_object, CSVHosts):
+            if not isinstance(phase1_result.connector_object, CSVConnectorHosts):
                 raise ValueError("Got invalid connector object as phase 1 result: %r" %
                                  phase1_result.connector_object)
 
