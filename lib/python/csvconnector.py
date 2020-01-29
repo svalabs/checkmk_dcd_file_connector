@@ -20,6 +20,7 @@
 from __future__ import absolute_import
 
 import csv
+import os.path
 import time
 
 from typing import (  # pylint: disable=unused-import
@@ -49,6 +50,8 @@ from cmk.gui.cee.plugins.wato.dcd import (
     connector_parameters_registry,
     ConnectorParameters,
 )
+
+from cmk.gui.exceptions import MKUserError
 
 from cmk.gui.valuespec import (
     AbsoluteDirname,
@@ -272,9 +275,13 @@ class CSVConnectorParameters(ConnectorParameters):
                     title=_("Path of to the CSV file to import."),
                     help=_("This is the path to the CSV file."),
                     allow_empty=False,
-                    # TODO: Path validation? lib/python/cmk/gui/backup.py line 1263
-                    # readable file
+                    validate=self.validate_csv,
                 )),
             ],
             optional_keys=[],
         )
+
+    @staticmethod
+    def validate_csv(filename, varprefix):
+        if not os.path.isfile(filename):
+            raise MKUserError(varprefix, "No file %r" % filename)
