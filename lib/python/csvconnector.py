@@ -54,9 +54,11 @@ from cmk.gui.cee.plugins.wato.dcd import (
 from cmk.gui.exceptions import MKUserError
 
 from cmk.gui.valuespec import (
-    AbsoluteDirname,
     Age,
+    Checkbox,
+    Filename,
     Dictionary,
+    TextAscii,
 )
 
 
@@ -82,12 +84,16 @@ class CSVConnectorConfig(ConnectorConfig):
         return {
             "interval": self.interval,
             "path": self.path,
+            "folder": self.folder,
+            "delete_hosts": self.delete_hosts,
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
         # type: (Dict) -> None
         self.interval = connector_cfg["interval"]
         self.path = connector_cfg["path"]
+        self.folder = connector_cfg["folder"]
+        self.delete_hosts = connector_cfg["delete_hosts"]
 
 
 @connector_registry.register
@@ -151,7 +157,7 @@ class CSVConnector(Connector):
 
     def _transform_hosts_for_web_api(self, hosts):
         # type: (List[Dict]) -> List[Tuple[str, str, Dict]]
-        folder = 'cmdb'
+        folder = self._connection_config.folder
         label_mapping = {
             "location": "STANDORT",
             "city": "STADT",
@@ -273,11 +279,21 @@ class CSVConnectorParameters(ConnectorParameters):
                     minvalue=1,
                     default_value=60,
                 )),
-                ("path", AbsoluteDirname(
+                ("path", Filename(
                     title=_("Path of to the CSV file to import."),
                     help=_("This is the path to the CSV file."),
                     allow_empty=False,
                     validate=self.validate_csv,
+                )),
+                ("folder", TextAscii(
+                    title=_("The folder where to place the hosts."),
+                    help=_("This is the folder where the hosts are placed inside WATO."),
+                    default="cmdb",
+                    allow_empty=False,
+                )),
+                ("delete_hosts", Checkbox(
+                    title=_("Delete removed hosts?"),
+                    help=_("Remove hosts missing in the CSV file from WATO?"),
                 )),
             ],
             optional_keys=[],
