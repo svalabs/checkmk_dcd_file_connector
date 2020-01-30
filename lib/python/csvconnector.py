@@ -85,7 +85,6 @@ class CSVConnectorConfig(ConnectorConfig):
             "interval": self.interval,
             "path": self.path,
             "folder": self.folder,
-            "delete_hosts": self.delete_hosts,
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
@@ -93,7 +92,6 @@ class CSVConnectorConfig(ConnectorConfig):
         self.interval = connector_cfg["interval"]
         self.path = connector_cfg["path"]
         self.folder = connector_cfg["folder"]
-        self.delete_hosts = connector_cfg["delete_hosts"]
 
 
 @connector_registry.register
@@ -136,16 +134,26 @@ class CSVConnector(Connector):
             cmk_hosts = self._web_api.get_all_hosts()
 
         with self.status.next_step("phase2_update", _("Phase 2.3: Updating config")) as step:
-            new_hosts = self._transform_hosts_for_web_api(
-                [h for h in cmdb_hosts if self._normalize_hostname(h['HOSTNAME']) not in cmk_hosts], hostname_field)
-            created_host_names = self._create_new_hosts(new_hosts)
-            change_message = _("Hosts: %d created") % len(
-                created_host_names) if created_host_names else _("Nothing changed")
+            hosts_to_create, hosts_to_modify= self._partition_hosts(cmdb_hosts, cmk_hosts, hostname_field)
+
+            created_host_names = self._create_new_hosts(hosts_to_create)
+            modified_host_names = self._modify_existing_hosts(hosts_to_modify)
+
+            if created_host_names or modified_host_names:
+                if created_host_names and modified_host_names:
+                    change_message = _("Hosts: %d created, %d created") % (len(created_host_names), len(modified_host_names))
+                elif created_host_names:
+                    change_message = _("Hosts: %d created") % len(created_host_names)
+                else:
+                    change_message = _("Hosts: %d modified") % len(modified_host_names)
+            else:
+                change_message =  _("Nothing changed")
+
             self._logger.verbose(change_message)
             step.finish(change_message)
 
         with self.status.next_step("phase2_activate", _("Phase 2.4: Activating changes")) as step:
-            if new_hosts:
+            if hosts_to_create or hosts_to_modify:
                 if self._activate_changes():
                     step.finish(_("Activated the changes"))
                 else:
@@ -153,25 +161,65 @@ class CSVConnector(Connector):
             else:
                 step.finish(_("No activation needed"))
 
+    def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field):
+        # type: (List[Dict], Dict, str) -> Tuple[List, List]
+        """
+        Partition the hosts into two groups:
+
+        1) New hosts which have to be added.
+        2) Existing hosts which which have to be modified.
+        """
+        def needs_modification(first, second):
+            return first != second
+
+        folder_path = self._connection_config.folder
+        hosts_to_create = []
+        hosts_to_modify = []
+        for host in cmdb_hosts:
+            hostname = self._normalize_hostname(host[hostname_field])
+
+            try:
+                existing_host = cmk_hosts[hostname]
+            except KeyError:
+                hosts_to_create.append(
+                    self._create_host_tuple(host, folder_path, hostname_field)
+                )
+                continue
+
+            attributes = existing_host["attributes"]
+            api_label = attributes.get("labels", {})
+            future_label = self._get_host_label(host, hostname_field)
+
+            if needs_modification(api_label, future_label):
+                attributes["labels"] = future_label
+                hosts_to_modify.append((hostname, attributes, []))
+
+        self._logger.verbose(
+            "Hosts: %d to create, %d to modify, %d unchanged",
+            len(hosts_to_create),
+            len(hosts_to_modify),
+            len(cmdb_hosts) - (len(hosts_to_modify) + len(hosts_to_create))
+        )
+
+        return hosts_to_create, hosts_to_modify
+
+    def _create_host_tuple(self, host, path, hostname_field):
+        return (
+            self._normalize_hostname(host[hostname_field]),
+            path,
+            {
+                'ipaddress': '127.0.0.1',
+                "labels": self._get_host_label(host, hostname_field)
+            },
+        )
+
     @staticmethod
     def _normalize_hostname(hostname):
         # type: (str) -> str
         return hostname.lower().replace(' ', '_')
 
-    def _transform_hosts_for_web_api(self, hosts, hostname_field):
-        # type: (List[Dict], str) -> List[Tuple[str, str, Dict]]
-        folder = self._connection_config.folder
-
-        return [
-            (
-                self._normalize_hostname(host[hostname_field]),
-                folder,
-                {
-                    'ipaddress': '127.0.0.1',
-                    "labels": {key: value for key, value in host.items() if key != hostname_field}
-                },
-            ) for host in hosts
-        ]
+    def _get_host_label(self, host, hostname_field):
+        return {key: value for key, value in host.items() if key != hostname_field}
 
     def _create_new_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
@@ -226,6 +274,30 @@ class CSVConnector(Connector):
                 timeout)
         else:
             self._logger.debug("Bulk discovery finished after %0.2f seconds", time.time() - start)
+
+    def _modify_existing_hosts(self, hosts_to_modify):
+        # type: (List) -> List[str]
+        if not hosts_to_modify:
+            self._logger.debug("Nothing to modify")
+            return []
+
+        modified_host_names = self._modify_hosts(hosts_to_modify)
+        self._logger.debug("Modified %d hosts", len(modified_host_names))
+        return modified_host_names
+
+    def _modify_hosts(self, hosts_to_modify):
+        # type: (List) -> List[str]
+        self._logger.debug(
+            "Modifying %d hosts (%s)",
+            len(hosts_to_modify),
+            ", ".join(h[0] for h in hosts_to_modify),
+        )
+        result = self._web_api.edit_hosts(hosts_to_modify)
+
+        for hostname, message in sorted(result["failed_hosts"].iteritems()):
+            self._logger.error("Modification of \"%s\" failed: %s" % (hostname, message))
+
+        return result["succeeded_hosts"]
 
     def _activate_changes(self):
         # type: () -> bool
@@ -283,10 +355,6 @@ class CSVConnectorParameters(ConnectorParameters):
                     help=_("This is the folder where the hosts are placed inside WATO."),
                     default="cmdb",
                     allow_empty=False,
-                )),
-                ("delete_hosts", Checkbox(
-                    title=_("Delete removed hosts?"),
-                    help=_("Remove hosts missing in the CSV file from WATO?"),
                 )),
             ],
             optional_keys=[],
