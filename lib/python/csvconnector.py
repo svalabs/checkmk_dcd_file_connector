@@ -180,9 +180,14 @@ class CSVConnector(Connector):
             try:
                 existing_host = cmk_hosts[hostname]
             except KeyError:
-                hosts_to_create.append(
-                    self._create_host_tuple(host, folder_path, hostname_field)
-                )
+                hosts_to_create.append((
+                    hostname,
+                    folder_path,
+                    {
+                        'ipaddress': '127.0.0.1',
+                        "labels": self._get_host_label(host, hostname_field)
+                    },
+                ))
                 continue
 
             attributes = existing_host["attributes"]
@@ -201,16 +206,6 @@ class CSVConnector(Connector):
         )
 
         return hosts_to_create, hosts_to_modify
-
-    def _create_host_tuple(self, host, path, hostname_field):
-        return (
-            self._normalize_hostname(host[hostname_field]),
-            path,
-            {
-                'ipaddress': '127.0.0.1',
-                "labels": self._get_host_label(host, hostname_field)
-            },
-        )
 
     @staticmethod
     def _normalize_hostname(hostname):
