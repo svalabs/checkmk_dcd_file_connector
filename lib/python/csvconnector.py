@@ -113,9 +113,10 @@ class CSVConnector(Connector):
         with open(self._connection_config.path) as fd:
             reader = csv.DictReader(fd)
             cmdb_hosts = [row for row in reader]
+            fields = reader.fieldnames
 
         self._logger.info("Found %d CMDB hosts", len(cmdb_hosts))
-        return Phase1Result(CSVConnectorHosts(cmdb_hosts), self._status)
+        return Phase1Result(CSVConnectorHosts(cmdb_hosts, fields), self._status)
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
@@ -128,13 +129,15 @@ class CSVConnector(Connector):
                                  phase1_result.connector_object)
 
             cmdb_hosts = phase1_result.connector_object.cmdb_hosts
+            # We always assume that the first column in our CSV is the hostname
+            hostname_field = phase1_result.connector_object.fieldnames[0]
 
         with self.status.next_step("phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")):
             cmk_hosts = self._web_api.get_all_hosts()
 
         with self.status.next_step("phase2_update", _("Phase 2.3: Updating config")) as step:
             new_hosts = self._transform_hosts_for_web_api(
-                [h for h in cmdb_hosts if self._normalize_hostname(h['HOSTNAME']) not in cmk_hosts])
+                [h for h in cmdb_hosts if self._normalize_hostname(h['HOSTNAME']) not in cmk_hosts], hostname_field)
             created_host_names = self._create_new_hosts(new_hosts)
             change_message = _("Hosts: %d created") % len(
                 created_host_names) if created_host_names else _("Nothing changed")
@@ -155,25 +158,17 @@ class CSVConnector(Connector):
         # type: (str) -> str
         return hostname.lower().replace(' ', '_')
 
-    def _transform_hosts_for_web_api(self, hosts):
-        # type: (List[Dict]) -> List[Tuple[str, str, Dict]]
+    def _transform_hosts_for_web_api(self, hosts, hostname_field):
+        # type: (List[Dict], str) -> List[Tuple[str, str, Dict]]
         folder = self._connection_config.folder
-        label_mapping = {
-            "location": "STANDORT",
-            "city": "STADT",
-            "monitoring": "MONITORING",
-            "alarm": "ALARMIERUNG",
-            "slarelevant": "SLARELEVANT",
-            "identifier": "IDENTIFIER",
-        }
 
         return [
             (
-                self._normalize_hostname(host['HOSTNAME']),
+                self._normalize_hostname(host[hostname_field]),
                 folder,
                 {
                     'ipaddress': '127.0.0.1',
-                    "labels": {key: host[value] for key, value in label_mapping.items()}
+                    "labels": {key: value for key, value in host.items() if key != hostname_field}
                 },
             ) for host in hosts
         ]
@@ -247,19 +242,20 @@ class CSVConnector(Connector):
 
 @connector_object_registry.register
 class CSVConnectorHosts(ConnectorObject):
-    def __init__(self, cmdb_hosts):
+    def __init__(self, cmdb_hosts, fieldnames):
         self.cmdb_hosts = cmdb_hosts
+        self.fieldnames = fieldnames
 
     @classmethod
     def from_serialized_attributes(cls, serialized):
-        return cls(serialized["cmdb_hosts"])
+        return cls(serialized["cmdb_hosts"], serialized["fieldnames"])
 
     def _serialize_attributes(self):
         # type: () -> Dict
-        return {"cmdb_hosts": self.cmdb_hosts}
+        return {"cmdb_hosts": self.cmdb_hosts, "fieldnames": self.fieldnames}
 
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.cmdb_hosts)
+        return "%s(%r, %r)" % (self.__class__.__name__, self.cmdb_hosts, self.fieldnames)
 
 
 @connector_parameters_registry.register
@@ -277,7 +273,8 @@ class CSVConnectorParameters(ConnectorParameters):
                 )),
                 ("path", Filename(
                     title=_("Path of to the CSV file to import."),
-                    help=_("This is the path to the CSV file."),
+                    help=_("This is the path to the CSV file. "
+                           "The first column of the file is assumed to contain the hostname."),
                     allow_empty=False,
                     validate=self.validate_csv,
                 )),
