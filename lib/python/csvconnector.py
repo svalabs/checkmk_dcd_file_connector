@@ -152,6 +152,14 @@ class CSVConnector(Connector):
     def _transform_hosts_for_web_api(self, hosts):
         # type: (List[Dict]) -> List[Tuple[str, str, Dict]]
         folder = 'cmdb'
+        label_mapping = {
+            "location": "STANDORT",
+            "city": "STADT",
+            "monitoring": "MONITORING",
+            "alarm": "ALARMIERUNG",
+            "slarelevant": "SLARELEVANT",
+            "identifier": "IDENTIFIER",
+        }
 
         transformed_hosts = []
         for host in hosts:
@@ -163,13 +171,7 @@ class CSVConnector(Connector):
                 folder,
                 {
                     'ipaddress': '127.0.0.1',
-                    # TODO: create label - how?
-                    # "location": host["STANDORT"],
-                    # "city": host["STADT"],
-                    # "monitoring": host["MONITORING"],
-                    # "alarm": host["ALARMIERUNG"],
-                    # "slarelevant": host["SLARELEVANT"],
-                    # "identifier": host["IDENTIFIER"],
+                    "labels": {key: host[value] for key, value in label_mapping.items()}
                 },
             ))
         return transformed_hosts
