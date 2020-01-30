@@ -167,20 +167,16 @@ class CSVConnector(Connector):
             "identifier": "IDENTIFIER",
         }
 
-        transformed_hosts = []
-        for host in hosts:
-            # NOTE: The test data for host_name is empty so we use the readable name here for simplicity.
-            #       We use a fixed folder here.
-            #       It would be possible to use attributes from the CMDB here.
-            transformed_hosts.append((
+        return [
+            (
                 self._normalize_hostname(host['HOSTNAME']),
                 folder,
                 {
                     'ipaddress': '127.0.0.1',
                     "labels": {key: host[value] for key, value in label_mapping.items()}
                 },
-            ))
-        return transformed_hosts
+            ) for host in hosts
+        ]
 
     def _create_new_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
