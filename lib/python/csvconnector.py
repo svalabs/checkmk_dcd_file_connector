@@ -55,7 +55,6 @@ from cmk.gui.exceptions import MKUserError
 
 from cmk.gui.valuespec import (
     Age,
-    Checkbox,
     Filename,
     Dictionary,
     TextAscii,
