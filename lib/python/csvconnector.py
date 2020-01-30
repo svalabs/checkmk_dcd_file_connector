@@ -195,7 +195,8 @@ class CSVConnector(Connector):
             future_label = self._get_host_label(host, hostname_field)
 
             if needs_modification(api_label, future_label):
-                attributes["labels"] = future_label
+                api_label.update(future_label)
+                attributes["labels"] = api_label
                 hosts_to_modify.append((hostname, attributes, []))
 
         self._logger.verbose(
