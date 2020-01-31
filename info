@@ -1,0 +1,12 @@
+{'author': u'Niko Wenselowski',
+ 'description': u'Import data from an CSV file.\n',
+ 'download_url': '',
+ 'files': {'bin': ['dcd'],
+           'lib': ['python/csvconnector.py'],
+           'web': ['plugins/wato/csvconnector.py']},
+ 'name': 'csvconnector',
+ 'num_files': 3,
+ 'title': u'CSV Connector',
+ 'version': '1.4',
+ 'version.min_required': '1.6.0',
+ 'version.packaged': '1.6.0p7'}
