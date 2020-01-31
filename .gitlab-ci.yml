@@ -6,8 +6,6 @@ stages:
 create mkp:
   stage: package
   script:
-    # Dynamic adjustment of the version.
-    - sed --in-place "s/'version': '1.4'/'version': '${CI_COMMIT_REF_NAME}'/" info
     # Converting info into info.json
     - python -c 'import json; f = open("info"); exec("j=%s" % f.read()); fj = open("info.json", "w"); json.dump(j, fj)'
     # Creating required tar files
