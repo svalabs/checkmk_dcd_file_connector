@@ -189,7 +189,7 @@ class CSVConnector(Connector):
                 unrelated_hosts.add(host_name)
 
         self._logger.verbose(
-            "Hosts: %d existing, %d existing but unrelated",
+            "Hosts: %i existing, %i existing but unrelated",
             len(hosts_managed_by_plugin),
             len(unrelated_hosts),
         )
@@ -270,7 +270,7 @@ class CSVConnector(Connector):
             return []
 
         created_host_names = self._create_hosts(hosts_to_create)
-        self._logger.debug("Created %d hosts", len(created_host_names))
+        self._logger.debug("Created %i hosts", len(created_host_names))
         if not created_host_names:
             return []
 
