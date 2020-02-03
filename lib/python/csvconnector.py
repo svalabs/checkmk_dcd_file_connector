@@ -202,7 +202,6 @@ class CSVConnector(Connector):
                     hostname,
                     folder_path,
                     {
-                        'ipaddress': '127.0.0.1',
                         "labels": self._get_host_label(host, hostname_field),
                         "locked_by": global_ident,
                     },
