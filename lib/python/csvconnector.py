@@ -133,18 +133,28 @@ class CSVConnector(Connector):
             cmk_hosts = self._web_api.get_all_hosts()
 
         with self.status.next_step("phase2_update", _("Phase 2.3: Updating config")) as step:
-            hosts_to_create, hosts_to_modify= self._partition_hosts(cmdb_hosts, cmk_hosts, hostname_field)
+            hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(cmdb_hosts, cmk_hosts, hostname_field)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
+            deleted_host_names = self._delete_hosts(hosts_to_delete)
 
-            if created_host_names or modified_host_names:
-                if created_host_names and modified_host_names:
-                    change_message = _("Hosts: %d created, %d created") % (len(created_host_names), len(modified_host_names))
+            changes_to_hosts = bool(created_host_names or modified_host_names or deleted_host_names)
+            if changes_to_hosts:
+                if created_host_names and modified_host_names and deleted_host_names:
+                    change_message = _("Hosts: %i created, %i modified, %i deleted") % (len(created_host_names), len(modified_host_names), len(deleted_host_names))
+                elif created_host_names and modified_host_names:
+                    change_message = _("Hosts: %i created, %i modified") % (len(created_host_names), len(modified_host_names))
+                elif created_host_names and deleted_host_names:
+                    change_message = _("Hosts: %i created, %i deleted") % (len(created_host_names), len(deleted_host_names))
+                elif modified_host_names and deleted_host_names:
+                    change_message = _("Hosts: %i modified, %i deleted") % (len(modified_host_names), len(deleted_host_names))
                 elif created_host_names:
-                    change_message = _("Hosts: %d created") % len(created_host_names)
+                    change_message = _("Hosts: %i created") % len(created_host_names)
+                elif deleted_host_names:
+                    change_message = _("Hosts: %i deleted") % len(deleted_host_names)
                 else:
-                    change_message = _("Hosts: %d modified") % len(modified_host_names)
+                    change_message = _("Hosts: %i modified") % len(modified_host_names)
             else:
                 change_message =  _("Nothing changed")
 
@@ -152,7 +162,7 @@ class CSVConnector(Connector):
             step.finish(change_message)
 
         with self.status.next_step("phase2_activate", _("Phase 2.4: Activating changes")) as step:
-            if hosts_to_create or hosts_to_modify:
+            if changes_to_hosts:
                 if self._activate_changes():
                     step.finish(_("Activated the changes"))
                 else:
@@ -228,14 +238,21 @@ class CSVConnector(Connector):
                 attributes["labels"] = api_label
                 hosts_to_modify.append((hostname, attributes, []))
 
+        cmdb_hostnames = set(
+            self._normalize_hostname(host[hostname_field])
+            for host in cmdb_hosts
+        )
+        # API requires this to be a list
+        hosts_to_delete = list(set(hosts_managed_by_plugin) - cmdb_hostnames)
+
         self._logger.verbose(
             "Hosts: %i to create, %i to modify, %i to delete",
             len(hosts_to_create),
             len(hosts_to_modify),
-            len(cmdb_hosts) - (len(hosts_to_modify) + len(hosts_to_create))
+            len(hosts_to_delete),
         )
 
-        return hosts_to_create, hosts_to_modify
+        return hosts_to_create, hosts_to_modify, hosts_to_delete
 
     @staticmethod
     def _normalize_hostname(hostname):
@@ -323,6 +340,19 @@ class CSVConnector(Connector):
             self._logger.error("Modification of \"%s\" failed: %s" % (hostname, message))
 
         return result["succeeded_hosts"]
+
+    def _delete_hosts(self, hosts_to_delete):
+        # type: (List[str]) -> List[str]
+        """Delete hosts that have been created by this connection and are not existing anymore"""
+        if not hosts_to_delete:
+            self._logger.debug("Nothing to delete")
+            return []
+
+        self._web_api.delete_hosts(hosts_to_delete)
+        self._logger.debug("Deleted %i hosts (%s)", len(hosts_to_delete),
+                           ", ".join(hosts_to_delete))
+
+        return hosts_to_delete
 
     def _activate_changes(self):
         # type: () -> bool
