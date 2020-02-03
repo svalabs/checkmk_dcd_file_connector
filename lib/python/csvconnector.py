@@ -184,8 +184,15 @@ class CSVConnector(Connector):
             len(unrelated_hosts),
         )
 
-        def needs_modification(first, second):
-            return first != second
+        def needs_modification(old, new):
+            for label, value in new.items():
+                try:
+                    if old[label] != value:
+                        return True
+                except KeyError:
+                    return True
+
+            return False
 
         folder_path = self._connection_config.folder
         hosts_to_create = []
