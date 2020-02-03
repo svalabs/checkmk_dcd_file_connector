@@ -5,6 +5,10 @@ stages:
 
 create mkp:
   stage: package
+  only:
+    - tags
+    - api
+    - web
   script:
     # Converting info into info.json
     - python -c 'import json; f = open("info"); exec("j=%s" % f.read()); fj = open("info.json", "w"); json.dump(j, fj)'
