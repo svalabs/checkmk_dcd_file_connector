@@ -168,6 +168,22 @@ class CSVConnector(Connector):
         1) New hosts which have to be added.
         2) Existing hosts which which have to be modified.
         """
+        global_ident = self.global_ident()
+        hosts_managed_by_plugin = {}
+        unrelated_hosts = set()
+        for host_name, host in cmk_hosts.items():
+            if host["attributes"].get("locked_by") == global_ident:
+                hosts_managed_by_plugin[host_name] = host
+            else:
+                self._logger.debug("Host %r already exists as an unrelated host", host_name)
+                unrelated_hosts.add(host_name)
+
+        self._logger.verbose(
+            "Hosts: %d existing, %d existing but unrelated",
+            len(hosts_managed_by_plugin),
+            len(unrelated_hosts),
+        )
+
         def needs_modification(first, second):
             return first != second
 
@@ -179,13 +195,16 @@ class CSVConnector(Connector):
 
             try:
                 existing_host = cmk_hosts[hostname]
+                if hostname in unrelated_hosts:
+                    continue  # not managed by this plugin
             except KeyError:
                 hosts_to_create.append((
                     hostname,
                     folder_path,
                     {
                         'ipaddress': '127.0.0.1',
-                        "labels": self._get_host_label(host, hostname_field)
+                        "labels": self._get_host_label(host, hostname_field),
+                        "locked_by": global_ident,
                     },
                 ))
                 continue
