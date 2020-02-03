@@ -112,7 +112,7 @@ class CSVConnector(Connector):
             cmdb_hosts = [row for row in reader]
             fields = reader.fieldnames
 
-        self._logger.info("Found %d CMDB hosts", len(cmdb_hosts))
+        self._logger.info("Found %i CMDB hosts", len(cmdb_hosts))
         return Phase1Result(CSVConnectorHosts(cmdb_hosts, fields), self._status)
 
     def _execute_phase2(self, phase1_result):
@@ -229,7 +229,7 @@ class CSVConnector(Connector):
                 hosts_to_modify.append((hostname, attributes, []))
 
         self._logger.verbose(
-            "Hosts: %d to create, %d to modify, %d unchanged",
+            "Hosts: %i to create, %i to modify, %i to delete",
             len(hosts_to_create),
             len(hosts_to_modify),
             len(cmdb_hosts) - (len(hosts_to_modify) + len(hosts_to_create))
@@ -264,7 +264,7 @@ class CSVConnector(Connector):
     def _create_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
         self._logger.debug(
-            "Creating %d hosts (%s)",
+            "Creating %i hosts (%s)",
             len(hosts_to_create),
             ", ".join(h[0] for h in hosts_to_create),
         )
@@ -277,7 +277,7 @@ class CSVConnector(Connector):
 
     def _discover_hosts(self, host_names_to_discover):
         # type: (List[str]) -> None
-        self._logger.debug("Discovering services on %d hosts (%s)", len(host_names_to_discover),
+        self._logger.debug("Discovering services on %i hosts (%s)", len(host_names_to_discover),
                            host_names_to_discover)
         self._web_api.bulk_discovery_start(host_names_to_discover)
         self._wait_for_bulk_discovery()
@@ -307,13 +307,13 @@ class CSVConnector(Connector):
             return []
 
         modified_host_names = self._modify_hosts(hosts_to_modify)
-        self._logger.debug("Modified %d hosts", len(modified_host_names))
+        self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
 
     def _modify_hosts(self, hosts_to_modify):
         # type: (List) -> List[str]
         self._logger.debug(
-            "Modifying %d hosts (%s)",
+            "Modifying %i hosts (%s)",
             len(hosts_to_modify),
             ", ".join(h[0] for h in hosts_to_modify),
         )
