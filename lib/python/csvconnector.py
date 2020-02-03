@@ -107,8 +107,8 @@ class CSVConnector(Connector):
 
     def _execute_phase1(self):
         # type: () -> Phase1Result
-        with open(self._connection_config.path) as fd:
-            reader = csv.DictReader(fd)
+        with open(self._connection_config.path) as cmdb_export:
+            reader = csv.DictReader(cmdb_export)
             cmdb_hosts = list(reader)
             fields = reader.fieldnames
 
