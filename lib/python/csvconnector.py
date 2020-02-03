@@ -156,7 +156,7 @@ class CSVConnector(Connector):
                 else:
                     change_message = _("Hosts: %i modified") % len(modified_host_names)
             else:
-                change_message =  _("Nothing changed")
+                change_message = _("Nothing changed")
 
             self._logger.verbose(change_message)
             step.finish(change_message)
