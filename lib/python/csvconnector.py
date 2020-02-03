@@ -107,9 +107,9 @@ class CSVConnector(Connector):
 
     def _execute_phase1(self):
         # type: () -> Phase1Result
-        with open(self._connection_config.path) as fd:
-            reader = csv.DictReader(fd)
-            cmdb_hosts = [row for row in reader]
+        with open(self._connection_config.path) as cmdb_export:
+            reader = csv.DictReader(cmdb_export)
+            cmdb_hosts = list(reader)
             fields = reader.fieldnames
 
         self._logger.info("Found %i CMDB hosts", len(cmdb_hosts))
@@ -156,7 +156,7 @@ class CSVConnector(Connector):
                 else:
                     change_message = _("Hosts: %i modified") % len(modified_host_names)
             else:
-                change_message =  _("Nothing changed")
+                change_message = _("Nothing changed")
 
             self._logger.verbose(change_message)
             step.finish(change_message)

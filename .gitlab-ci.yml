@@ -1,10 +1,27 @@
-image: centos:7
+image: python:3
 
 stages:
+  - qa
   - package
+
+
+pylint:
+  stage: qa
+  script:
+    - pip install pylint
+    - pylint --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+
+
+flake8:
+  stage: qa
+  script:
+    - pip install flake8
+    - flake8 --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+
 
 create mkp:
   stage: package
+  image: centos:7
   only:
     - tags
     - api
@@ -19,5 +36,6 @@ create mkp:
     # Packing the final archive
     - tar -czvf csvconnector-${CI_COMMIT_REF_NAME}.mkp info info.json bin.tar lib.tar web.tar
   artifacts:
+    name: csvconnector-${CI_COMMIT_SHORT_SHA}
     paths:
       - csvconnector-${CI_COMMIT_REF_NAME}.mkp
