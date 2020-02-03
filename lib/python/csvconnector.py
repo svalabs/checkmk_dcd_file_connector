@@ -109,7 +109,7 @@ class CSVConnector(Connector):
         # type: () -> Phase1Result
         with open(self._connection_config.path) as fd:
             reader = csv.DictReader(fd)
-            cmdb_hosts = [row for row in reader]
+            cmdb_hosts = list(reader)
             fields = reader.fieldnames
 
         self._logger.info("Found %i CMDB hosts", len(cmdb_hosts))
