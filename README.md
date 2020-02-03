@@ -4,8 +4,9 @@ Import hosts from a CSV file.
 
 ## Required adjustment
 
-You have to adjust the local dcd of your site to allow for loading the plugin.
-To do so change the file `~/etc/init.d/dcd` the line
+This plugin brings its own dcd "binary" that will load the plugin.
+You have to adjust the local dcd service of your site to allow for loading the plugin.
+To do so change in `~/etc/init.d/dcd` the line
 
 ```
 DAEMON=$OMD_ROOT/bin/dcd
