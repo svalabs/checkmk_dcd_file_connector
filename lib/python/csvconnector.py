@@ -227,11 +227,9 @@ class CSVConnector(Connector):
                     folder_path,
                     {
                         "labels": self._get_host_label(host, hostname_field),
-                        # Lock the host and the site attribute so that
-                        # changes to this are only done through this plugin.
-                        "locked_attributes": ["site"],
+                        # Lock the host in order to be able to detect hosts
+                        # that have been created through this plugin.
                         "locked_by": global_ident,
-                        "site": self._connection_config.site_id,
                     },
                 ))
                 continue
