@@ -171,12 +171,19 @@ class CSVConnector(Connector):
                 step.finish(_("No activation needed"))
 
     def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field):
-        # type: (List[Dict], Dict, str) -> Tuple[List, List]
+        # type: (List[Dict], Dict, str) -> Tuple[List, List, List]
         """
-        Partition the hosts into two groups:
+        Partition the hosts into three groups:
 
         1) New hosts which have to be added.
         2) Existing hosts which which have to be modified.
+        3) Existing hosts that have been removed from the import.
+
+        Unrelated hosts that are not handled by this connection should never be
+        modified. If a host is handled by a connection is determined by the the
+        locked attribute. Locked attributes are exclusively set by the connection
+        and cannot be modified in the GUI, but other attributes can still be
+        modified.
         """
         global_ident = self.global_ident()
         hosts_managed_by_plugin = {}
