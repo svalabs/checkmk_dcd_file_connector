@@ -53,11 +53,12 @@ from cmk.gui.cee.plugins.wato.dcd import (
 
 from cmk.gui.exceptions import MKUserError
 
+from cmk.gui.plugins.wato import FullPathFolderChoice
+
 from cmk.gui.valuespec import (
     Age,
     Filename,
     Dictionary,
-    TextAscii,
 )
 
 
@@ -410,11 +411,12 @@ class CSVConnectorParameters(ConnectorParameters):
                     allow_empty=False,
                     validate=self.validate_csv,
                 )),
-                ("folder", TextAscii(
-                    title=_("The folder where to place the hosts."),
-                    help=_("This is the folder where the hosts are placed inside WATO."),
-                    default="cmdb",
-                    allow_empty=False,
+                ("folder", FullPathFolderChoice(
+                    title=_("Create hosts in"),
+                    help=
+                    _("All hosts created by this connection will be placed in this "
+                      "folder. You are free to move the host to another folder after "
+                      "creation."),
                 )),
             ],
             optional_keys=[],
