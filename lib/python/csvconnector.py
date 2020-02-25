@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import csv
 import os.path
+import re
 import time
 
 from typing import (  # pylint: disable=unused-import
@@ -59,6 +60,8 @@ from cmk.gui.valuespec import (
     Age,
     Filename,
     Dictionary,
+    ListOfStrings,
+    RegExpUnicode,
 )
 
 
@@ -85,6 +88,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "interval": self.interval,
             "path": self.path,
             "folder": self.folder,
+            "host_filters": self.host_filters
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
@@ -92,6 +96,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.interval = connector_cfg["interval"]
         self.path = connector_cfg["path"]
         self.folder = connector_cfg["folder"]
+        self.host_filters = connector_cfg.get("host_filters", [])
 
 
 @connector_registry.register
@@ -202,6 +207,14 @@ class CSVConnector(Connector):
             len(unrelated_hosts),
         )
 
+        host_filters = [re.compile(f) for f in self._connection_config.host_filters]
+
+        def host_matches_filters(host):
+            if not host_filters:
+                return True
+
+            return any(f.match(host) for f in host_filters)
+
         def needs_modification(old, new):
             for label, value in new.items():
                 try:
@@ -217,6 +230,8 @@ class CSVConnector(Connector):
         hosts_to_modify = []
         for host in cmdb_hosts:
             hostname = self._normalize_hostname(host[hostname_field])
+            if not host_matches_filters(hostname):
+                continue
 
             try:
                 existing_host = cmk_hosts[hostname]
@@ -418,8 +433,16 @@ class CSVConnectorParameters(ConnectorParameters):
                       "folder. You are free to move the host to another folder after "
                       "creation."),
                 )),
+                ("host_filters", ListOfStrings(
+                    title=_("Only add matching hosts"),
+                    help=_(
+                        "Only care about hosts with names that match one of these "
+                        "regular expressions."),
+                    orientation="horizontal",
+                    valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
+                )),
             ],
-            optional_keys=[],
+            optional_keys=["host_filters"],
         )
 
     @staticmethod
