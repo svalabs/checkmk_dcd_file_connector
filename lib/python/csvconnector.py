@@ -21,6 +21,7 @@ from __future__ import absolute_import
 
 import csv
 import os.path
+import re
 import time
 
 from typing import (  # pylint: disable=unused-import
@@ -205,7 +206,7 @@ class CSVConnector(Connector):
             len(unrelated_hosts),
         )
 
-        host_filters = [re.compile(f) for f in self.connector_cfg.host_filters]
+        host_filters = [re.compile(f) for f in self._connection_config.host_filters]
 
         def host_matches_filters(host):
             if not host_filters:
