@@ -380,8 +380,8 @@ class CSVConnector(Connector):
         self._logger.debug("Activating changes")
         try:
             self._web_api.activate_changes()
-        except MKAPIError as e:
-            if "no changes to activate" in "%s" % e:
+        except MKAPIError as error:
+            if "no changes to activate" in "%s" % error:
                 self._logger.info(_("There was no change to activate"))
                 return False
             raise
