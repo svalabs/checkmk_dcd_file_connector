@@ -428,10 +428,9 @@ class CSVConnectorParameters(ConnectorParameters):
                 )),
                 ("folder", FullPathFolderChoice(
                     title=_("Create hosts in"),
-                    help=
-                    _("All hosts created by this connection will be placed in this "
-                      "folder. You are free to move the host to another folder after "
-                      "creation."),
+                    help=_("All hosts created by this connection will be "
+                           "placed in this folder. You are free to move the "
+                           "host to another folder after creation."),
                 )),
                 ("host_filters", ListOfStrings(
                     title=_("Only add matching hosts"),
