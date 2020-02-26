@@ -469,7 +469,8 @@ class CSVConnectorParameters(ConnectorParameters):
                     title=_("Take over existing hosts"),
                     help=_(
                         "Take over already existing hosts with names that "
-                        "match one of these regular expressions."),
+                        "match one of these regular expressions. This will not"
+                        "overtake hosts handled by foreign connections or plugins."),
                     orientation="horizontal",
                     valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
                 )),
