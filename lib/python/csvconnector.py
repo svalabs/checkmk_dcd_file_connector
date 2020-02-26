@@ -194,6 +194,7 @@ class CSVConnector(Connector):
         modified.
         """
         host_overtake_filters = [re.compile(f) for f in self._connection_config.host_overtake_filters]
+
         def overtake_host(hostname):
             if not host_overtake_filters:
                 return False
