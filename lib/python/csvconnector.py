@@ -88,7 +88,8 @@ class CSVConnectorConfig(ConnectorConfig):
             "interval": self.interval,
             "path": self.path,
             "folder": self.folder,
-            "host_filters": self.host_filters
+            "host_filters": self.host_filters,
+            "host_overtake_filters": self.host_overtake_filters,
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
@@ -97,6 +98,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.path = connector_cfg["path"]
         self.folder = connector_cfg["folder"]
         self.host_filters = connector_cfg.get("host_filters", [])
+        self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])
 
 
 @connector_registry.register
@@ -191,12 +193,30 @@ class CSVConnector(Connector):
         and cannot be modified in the GUI, but other attributes can still be
         modified.
         """
+        host_overtake_filters = [re.compile(f) for f in self._connection_config.host_overtake_filters]
+        def overtake_host(hostname):
+            if not host_overtake_filters:
+                return False
+
+            return any(f.match(hostname) for f in host_overtake_filters)
+
         global_ident = self.global_ident()
         hosts_managed_by_plugin = {}
+        hosts_to_overtake = set()
         unrelated_hosts = set()
         for host_name, host in cmk_hosts.items():
-            if host["attributes"].get("locked_by") == global_ident:
+            locked_by = host["attributes"].get("locked_by")
+            if locked_by == global_ident:
                 hosts_managed_by_plugin[host_name] = host
+            elif overtake_host(host_name) and not locked_by:
+                # A user might want the plugin to overtake already
+                # existing hosts. These hosts usually have been added
+                # before and their labels shall now be managed by this
+                # plugin.
+                # To avoid a hostile takeover this only is done for
+                # hosts that are not locked by another plugin.
+                self._logger.info("Overtaking host %r", host_name)
+                hosts_to_overtake.add(host_name)
             else:
                 self._logger.debug("Host %r already exists as an unrelated host", host_name)
                 unrelated_hosts.add(host_name)
@@ -254,9 +274,14 @@ class CSVConnector(Connector):
             api_label = attributes.get("labels", {})
             future_label = self._get_host_label(host, hostname_field)
 
-            if needs_modification(api_label, future_label):
+            overtake_host = hostname in hosts_to_overtake
+            if overtake_host or needs_modification(api_label, future_label):
                 api_label.update(future_label)
                 attributes["labels"] = api_label
+
+                if overtake_host:
+                    attributes["locked_by"] = global_ident
+
                 hosts_to_modify.append((hostname, attributes, []))
 
         cmdb_hostnames = set(
@@ -440,8 +465,16 @@ class CSVConnectorParameters(ConnectorParameters):
                     orientation="horizontal",
                     valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
                 )),
+                ("host_overtake_filters", ListOfStrings(
+                    title=_("Take over existing hosts"),
+                    help=_(
+                        "Take over already existing hosts with names that "
+                        "match one of these regular expressions."),
+                    orientation="horizontal",
+                    valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
+                )),
             ],
-            optional_keys=["host_filters"],
+            optional_keys=["host_filters", "host_overtake_filters"],
         )
 
     @staticmethod
