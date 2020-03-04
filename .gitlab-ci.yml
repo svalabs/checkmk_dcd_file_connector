@@ -1,26 +1,21 @@
 image: python:3
 
-stages:
-  - qa
-  - package
-
-
 pylint:
-  stage: qa
+  stage: test
   script:
     - pip install pylint
     - pylint --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
 
 
 flake8:
-  stage: qa
+  stage: test
   script:
     - pip install flake8
     - flake8 --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
 
 
 create mkp:
-  stage: package
+  stage: build
   image: centos:7
   only:
     - tags
