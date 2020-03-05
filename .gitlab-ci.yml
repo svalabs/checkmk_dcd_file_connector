@@ -17,8 +17,8 @@ flake8:
 run tests:
   stage: test
   script:
-    - pip install pytest
-    - pytest tests/
+    - pip install pytest pytest-cov
+    - pytest --cov=csvconnector tests/
 
 
 create mkp:
