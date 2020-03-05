@@ -18,6 +18,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
+from typing import (  # pylint: disable=unused-import
+    Dict, List, Tuple,
+)
+
+
 def normalize_hostname(hostname):
     # type: (str) -> str
     return hostname.lower().replace(' ', '_')
