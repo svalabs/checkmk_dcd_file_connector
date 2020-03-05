@@ -4,14 +4,14 @@ pylint:
   stage: test
   script:
     - pip install pylint
-    - pylint --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+    - pylint --exit-zero lib/python/csvconnector/ web/plugins/wato/csvconnector.py
 
 
 flake8:
   stage: test
   script:
     - pip install flake8
-    - flake8 --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+    - flake8 --exit-zero lib/python/csvconnector/ web/plugins/wato/csvconnector.py
 
 
 create mkp:
