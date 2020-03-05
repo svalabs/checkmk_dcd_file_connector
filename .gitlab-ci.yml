@@ -18,7 +18,7 @@ run tests:
   stage: test
   script:
     - pip install pytest pytest-cov
-    - pytest --cov=csvconnector tests/
+    - pytest --cov=csvconnector --cov-report term-missing tests/
 
 
 create mkp:
