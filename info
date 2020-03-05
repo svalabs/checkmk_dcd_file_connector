@@ -2,7 +2,7 @@
  'description': u'Import data from an CSV file.\n\nThis plugin brings its own dcd that will load the plugin.\nYou have to adjust the dcd service of your site to allow for loading the plugin.\nTo do so change in `~/etc/init.d/dcd` the line `DAEMON=$OMD_ROOT/bin/dcd` to `DAEMON=$OMD_ROOT/local/bin/dcd`.',
  'download_url': '',
  'files': {'bin': ['dcd'],
-           'lib': ['python/csvconnector.py'],
+           'lib': ['python/csvconnector/__init__.py'],
            'web': ['plugins/wato/csvconnector.py']},
  'name': 'csvconnector',
  'num_files': 3,
