@@ -20,7 +20,6 @@
 from __future__ import absolute_import
 
 import csv
-import os.path
 import re
 import time
 
@@ -30,53 +29,21 @@ from typing import (  # pylint: disable=unused-import
 
 from cmk.utils.i18n import _
 
-from cmk.cee.dcd.connectors.utils import (
-    Phase1Result,
+from cmk.cee.dcd.plugins.connectors.connectors_api.v0 import (  # noqa: F401 # pylint: disable=unused-import
+    Connector,
+    connector_config_registry,
+    connector_registry,
+    ConnectorConfig,
     NullObject,
-    ConnectorType,
+    Phase1Result,
+)
+from cmk.cee.dcd.connectors.utils import (
     ConnectorObject,
     connector_object_registry,
-    Connector,
-    connector_type_registry,
-    connector_registry,
     MKAPIError,
 )
 
-from cmk.cee.dcd.config import (
-    connector_config_registry,
-    ConnectorConfig,
-)
-
-from cmk.gui.cee.plugins.wato.dcd import (
-    connector_parameters_registry,
-    ConnectorParameters,
-)
-
-from cmk.gui.exceptions import MKUserError
-
-from cmk.gui.plugins.wato import FullPathFolderChoice
-
-from cmk.gui.valuespec import (
-    Age,
-    Filename,
-    Dictionary,
-    ListOfStrings,
-    RegExpUnicode,
-)
-
 from .helper import normalize_hostname, get_host_label
-
-
-@connector_type_registry.register
-class CSVConnectorType(ConnectorType):
-    def name(self):
-        return "csvconnector"
-
-    def title(self):
-        return _("CSV import")
-
-    def description(self):
-        return _("Connector for importing data from a CSV file.")
 
 
 @connector_config_registry.register
@@ -92,7 +59,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "folder": self.folder,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
-        }
+        }  # type: Dict
 
     def _connector_attributes_from_config(self, connector_cfg):
         # type: (Dict) -> None
@@ -105,18 +72,21 @@ class CSVConnectorConfig(ConnectorConfig):
 
 @connector_registry.register
 class CSVConnector(Connector):
-    connector_type = CSVConnectorType
 
-    def __init__(self, logger, config, web_api, connection_id, omd_site):
-        self._connection_config = CSVConnectorConfig()
-        super(CSVConnector, self).__init__(logger, config, web_api, connection_id, omd_site)
-        self._type = self.connector_type()
+    @classmethod
+    def name(cls):
+        # type: () -> str
+        return "csvconnector"
 
     def _execution_interval(self):
+        # type: () -> int
+        """Number of seconds to sleep after each phase execution"""
         return self._connection_config.interval
 
     def _execute_phase1(self):
         # type: () -> Phase1Result
+        """Execute the first synchronization phase"""
+        self._logger.info("Execute phase 1")
         with open(self._connection_config.path) as cmdb_export:
             reader = csv.DictReader(cmdb_export)
             cmdb_hosts = list(reader)
@@ -127,6 +97,13 @@ class CSVConnector(Connector):
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
+        """Execute the second synchronization phase
+
+        It is executed based on the information provided by the first phase. This
+        phase is intended to talk to the local WATO Web API for updating the
+        Check_MK configuration based on the information provided by the connection.
+        """
+        self._logger.info("Execute phase 2")
         with self.status.next_step("phase2_extract_result", _("Phase 2.1: Extracting result")):
             if isinstance(phase1_result.connector_object, NullObject):
                 raise ValueError("Remote site has not completed phase 1 yet")
@@ -423,56 +400,3 @@ class CSVConnectorHosts(ConnectorObject):
 
     def __repr__(self):
         return "%s(%r, %r)" % (self.__class__.__name__, self.cmdb_hosts, self.fieldnames)
-
-
-@connector_parameters_registry.register
-class CSVConnectorParameters(ConnectorParameters):
-    def connector_type(self):
-        return connector_type_registry["csvconnector"]
-
-    def valuespec(self):
-        return Dictionary(
-            elements=[
-                ("interval", Age(
-                    title=_("Sync interval"),
-                    minvalue=1,
-                    default_value=60,
-                )),
-                ("path", Filename(
-                    title=_("Path of to the CSV file to import."),
-                    help=_("This is the path to the CSV file. "
-                           "The first column of the file is assumed to contain the hostname."),
-                    allow_empty=False,
-                    validate=self.validate_csv,
-                )),
-                ("folder", FullPathFolderChoice(
-                    title=_("Create hosts in"),
-                    help=_("All hosts created by this connection will be "
-                           "placed in this folder. You are free to move the "
-                           "host to another folder after creation."),
-                )),
-                ("host_filters", ListOfStrings(
-                    title=_("Only add matching hosts"),
-                    help=_(
-                        "Only care about hosts with names that match one of these "
-                        "regular expressions."),
-                    orientation="horizontal",
-                    valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
-                )),
-                ("host_overtake_filters", ListOfStrings(
-                    title=_("Take over existing hosts"),
-                    help=_(
-                        "Take over already existing hosts with names that "
-                        "match one of these regular expressions. This will not"
-                        "overtake hosts handled by foreign connections or plugins."),
-                    orientation="horizontal",
-                    valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
-                )),
-            ],
-            optional_keys=["host_filters", "host_overtake_filters"],
-        )
-
-    @staticmethod
-    def validate_csv(filename, varprefix):
-        if not os.path.isfile(filename):
-            raise MKUserError(varprefix, "No file %r" % filename)

@@ -1,4 +1,5 @@
-# -*- encoding: utf-8; py-indent-offset: 4 -*-
+#!/usr/bin/env python3
+# -*- coding: utf-8; py-indent-offset: 4 -*-
 
 # Copyright (C) 2020  Niko Wenselowski <niko.wenselowski@sva.de>
 #                     for SVA System Vertrieb Alexander GmbH
@@ -17,4 +18,85 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import csvconnector.connector  # NOQA
+import os.path
+
+from cmk.gui.exceptions import MKUserError
+from cmk.gui.i18n import _
+from cmk.gui.plugins.wato import FullPathFolderChoice
+from cmk.gui.valuespec import (
+    Age,
+    Dictionary,
+    Filename,
+    ListOfStrings,
+    RegExpUnicode,
+)
+
+from cmk.gui.cee.plugins.wato.dcd import (  # noqa: F401 # pylint: disable=unused-import
+    connector_parameters_registry, ConnectorParameters,
+)
+
+
+
+@connector_parameters_registry.register
+class CSVConnectorParameters(ConnectorParameters):
+    @classmethod
+    def name(cls):
+        # type: () -> str
+        return "csvconnector"
+
+    def title(self):
+        # type: () -> str
+        return _("CSV import")
+
+    def description(self):
+        # type: () -> str
+        return _("Connector for importing data from a CSV file.")
+
+    def valuespec(self):
+        return Dictionary(
+            elements=[
+                ("interval", Age(
+                    title=_("Sync interval"),
+                    help=_("The interval the connection will be executed to poll the data source "
+                            "and update the configuration."),
+                    minvalue=1,
+                    default_value=60,
+                )),
+                ("path", Filename(
+                    title=_("Path of to the CSV file to import."),
+                    help=_("This is the path to the CSV file. "
+                           "The first column of the file is assumed to contain the hostname."),
+                    allow_empty=False,
+                    validate=self.validate_csv,
+                )),
+                ("folder", FullPathFolderChoice(
+                    title=_("Create hosts in"),
+                    help=_("All hosts created by this connection will be "
+                           "placed in this folder. You are free to move the "
+                           "host to another folder after creation."),
+                )),
+                ("host_filters", ListOfStrings(
+                    title=_("Only add matching hosts"),
+                    help=_(
+                        "Only care about hosts with names that match one of these "
+                        "regular expressions."),
+                    orientation="horizontal",
+                    valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
+                )),
+                ("host_overtake_filters", ListOfStrings(
+                    title=_("Take over existing hosts"),
+                    help=_(
+                        "Take over already existing hosts with names that "
+                        "match one of these regular expressions. This will not"
+                        "overtake hosts handled by foreign connections or plugins."),
+                    orientation="horizontal",
+                    valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
+                )),
+            ],
+            optional_keys=["host_filters", "host_overtake_filters"],
+        )
+
+    @staticmethod
+    def validate_csv(filename, varprefix):
+        if not os.path.isfile(filename):
+            raise MKUserError(varprefix, "No file %r" % filename)
