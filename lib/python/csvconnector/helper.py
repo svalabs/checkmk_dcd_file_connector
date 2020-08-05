@@ -27,4 +27,4 @@ def normalize_hostname(hostname):
 
 def get_host_label(host, hostname_field):
     # type: (Dict, str) -> Dict
-    return {key: value for key, value in host.items() if key != hostname_field}
+    return {key.lower(): value for key, value in host.items() if key != hostname_field}

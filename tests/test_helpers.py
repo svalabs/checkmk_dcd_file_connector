@@ -7,12 +7,12 @@ def test_getting_host_label():
 
     host = {
         hostname_field: 'testhost',
-        'label1': 1,
+        'LaBeL': 1,
         'label2': 2,
     }
 
     expected_label = {
-        'label1': 1,
+        'label1': 1,  # key should be lowercased
         'label2': 2,
     }
 
