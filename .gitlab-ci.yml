@@ -3,7 +3,7 @@ image: python:3
 stages:
   - test
   - qa
-  - build
+  - package
 
 
 pylint:
@@ -28,7 +28,7 @@ run tests:
 
 
 create mkp:
-  stage: build
+  stage: package
   image: centos:7
   only:
     - tags
