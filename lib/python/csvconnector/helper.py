@@ -17,4 +17,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import csvconnector.connector  # NOQA
+from typing import Dict  # pylint: disable=unused-import
+
+
+def normalize_hostname(hostname):
+    # type: (str) -> str
+    return hostname.lower().replace(' ', '_')
+
+
+def get_host_label(host, hostname_field):
+    # type: (Dict, str) -> Dict
+    return {key: value for key, value in host.items() if key != hostname_field}

@@ -64,6 +64,8 @@ from cmk.gui.valuespec import (
     RegExpUnicode,
 )
 
+from .helper import normalize_hostname, get_host_label
+
 
 @connector_type_registry.register
 class CSVConnectorType(ConnectorType):
@@ -250,7 +252,7 @@ class CSVConnector(Connector):
         hosts_to_create = []
         hosts_to_modify = []
         for host in cmdb_hosts:
-            hostname = self._normalize_hostname(host[hostname_field])
+            hostname = normalize_hostname(host[hostname_field])
             if not host_matches_filters(hostname):
                 continue
 
@@ -263,7 +265,7 @@ class CSVConnector(Connector):
                     hostname,
                     folder_path,
                     {
-                        "labels": self._get_host_label(host, hostname_field),
+                        "labels": get_host_label(host, hostname_field),
                         # Lock the host in order to be able to detect hosts
                         # that have been created through this plugin.
                         "locked_by": global_ident,
@@ -273,7 +275,7 @@ class CSVConnector(Connector):
 
             attributes = existing_host["attributes"]
             api_label = attributes.get("labels", {})
-            future_label = self._get_host_label(host, hostname_field)
+            future_label = get_host_label(host, hostname_field)
 
             overtake_host = hostname in hosts_to_overtake
             if overtake_host or needs_modification(api_label, future_label):
@@ -286,7 +288,7 @@ class CSVConnector(Connector):
                 hosts_to_modify.append((hostname, attributes, []))
 
         cmdb_hostnames = set(
-            self._normalize_hostname(host[hostname_field])
+            normalize_hostname(host[hostname_field])
             for host in cmdb_hosts
         )
         # API requires this to be a list
@@ -300,15 +302,6 @@ class CSVConnector(Connector):
         )
 
         return hosts_to_create, hosts_to_modify, hosts_to_delete
-
-    @staticmethod
-    def _normalize_hostname(hostname):
-        # type: (str) -> str
-        return hostname.lower().replace(' ', '_')
-
-    def _get_host_label(self, host, hostname_field):
-        # type: (Dict, str) -> Dict
-        return {key: value for key, value in host.items() if key != hostname_field}
 
     def _create_new_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
