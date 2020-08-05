@@ -7,7 +7,7 @@ def test_getting_host_label():
 
     host = {
         hostname_field: 'testhost',
-        'LaBeL': 1,
+        'LaBeL1': 1,
         'label2': 2,
     }
 
