@@ -2,18 +2,19 @@ image: python:3
 
 stages:
   - test
+  - qa
   - build
 
 
 pylint:
-  stage: test
+  stage: qa
   script:
     - pip install pylint
     - pylint --exit-zero lib/python/csvconnector/ web/plugins/wato/csvconnector.py
 
 
 flake8:
-  stage: test
+  stage: qa
   script:
     - pip install flake8
     - flake8 --exit-zero lib/python/csvconnector/ web/plugins/wato/csvconnector.py
