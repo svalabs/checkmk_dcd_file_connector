@@ -347,8 +347,7 @@ class CSVConnector(Connector):
         return {key: value for key, value in host.items()
                 if key != hostname_field and key.startswith('label_')}
 
-    @staticmethod
-    def _get_host_tags(attributes):
+    def _get_host_tags(self, attributes):
         # type: (Dict) -> Dict
         return {attr: value for attr, value in attributes.items()
                 if self.is_tag(attr)}
