@@ -500,11 +500,11 @@ class TagMatcher(object):
 
         Throw a `ValueError` if no tag matches.
         """
-        if k in self._original:
-            return k
+        if name in self._original:
+            return name
 
         try:
-            return self._normalized_names[k.lower()]
+            return self._normalized_names[name.lower()]
         except KeyError:
             raise ValueError("No matching tag for {!r} found!".format(name))
 
