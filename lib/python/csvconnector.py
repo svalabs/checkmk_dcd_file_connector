@@ -344,7 +344,7 @@ class CSVConnector(Connector):
         return hostname.lower().replace(' ', '_')
 
     @staticmethod
-    def _get_host_label(self, host, hostname_field):
+    def _get_host_label(host, hostname_field):
         # type: (Dict, str) -> Dict
         return {key: value for key, value in host.items()
                 if key != hostname_field and key.startswith('label_')}
