@@ -134,8 +134,10 @@ class CSVConnector(Connector):
                                  phase1_result.connector_object)
 
             cmdb_hosts = phase1_result.connector_object.cmdb_hosts
+
+            fieldnames = phase1_result.connector_object.fieldnames
             # We always assume that the first column in our CSV is the hostname
-            hostname_field = phase1_result.connector_object.fieldnames[0]
+            hostname_field = fieldnames[0]
 
         with self.status.next_step("phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")):
             cmk_hosts = self._web_api.get_all_hosts()
