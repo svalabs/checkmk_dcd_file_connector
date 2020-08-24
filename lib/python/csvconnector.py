@@ -308,7 +308,8 @@ class CSVConnector(Connector):
 
     def _get_host_label(self, host, hostname_field):
         # type: (Dict, str) -> Dict
-        return {key: value for key, value in host.items() if key != hostname_field}
+        return {key: value for key, value in host.items()
+                if key != hostname_field and key.startswith('label_')}
 
     def _create_new_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
