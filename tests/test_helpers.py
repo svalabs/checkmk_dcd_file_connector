@@ -10,23 +10,23 @@ def hostname_field():
 def test_getting_host_label(hostname_field):
     host = {
         hostname_field: 'testhost',
-        'LaBeL1': 1,
-        'another_key': 'AS df Gh',
+        'label_LaBeL1': 1,
+        'label_another_key': 'AS df Gh',
     }
 
     expected_label = {
-        'label1': 1,
-        'another_key': 'AS df Gh',
+        'label_label1': 1,
+        'label_another_key': 'AS df Gh',
     }
 
     assert expected_label == csvconnector.get_host_label(host, hostname_field)
 
 
 @pytest.mark.parametrize("key, expected_key, value", (
-    ('LaBeL1', 'label1', 1),  # key should be lowercased
-    ('label2', 'label2', 2),
-    ('Dont_Lowercase_Value', 'dont_lowercase_value', 'DevOps'),
-    ('dont_lowercase_value2', 'dont_lowercase_value2', 'ITIL'),
+    ('label_LaBeL1', 'label1', 1),  # key should be lowercased
+    ('label_label2', 'label2', 2),
+    ('label_Dont_Lowercase_Value', 'dont_lowercase_value', 'DevOps'),
+    ('label_dont_lowercase_value2', 'dont_lowercase_value2', 'ITIL'),
 ))
 def test_getting_host_label_transformation(hostname_field, key, expected_key, value):
     host = {hostname_field: 'testhost', key: value}
