@@ -54,3 +54,10 @@ def test_normalize_hostname(hostname, expected_hostname):
 ])
 def test_is_tag(value):
     assert csvconnector.is_tag(value)
+
+
+@pytest.mark.parametrize("host, expected_tags", [
+    ({"name": "test1", "label_foo": "bar", "tag_cloud": "AWS"}, {"tag_cloud": "AWS"}),
+])
+def test_getting_host_tags(host, expected_tags)
+    assert csvconnector.get_host_tags(host) == expected_tags
