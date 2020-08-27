@@ -72,7 +72,27 @@ def normalize_hostname(hostname):
 
 def get_host_label(host, hostname_field):
     # type: (Dict, str) -> Dict
-    return {key.lower(): value for key, value in host.items() if key != hostname_field}
+    return {key: value for key, value in host.items()
+            if key != hostname_field and key.startswith('label_')}
+
+
+def get_host_tags(self, attributes):
+    # type: (Dict) -> Dict
+    return {attr: value for attr, value in attributes.items()
+            if is_tag(attr)}
+
+
+def is_tag(name):
+    """
+    Is the name a 'tag'?
+
+    Checks for attributes that begin 'tag_' as this is how the
+    CMK API handles this cases.
+    """
+    if name.startswith('tag_'):
+        return True
+
+    return name.lower().startswith('tag_')
 
 
 @connector_type_registry.register
@@ -144,14 +164,24 @@ class CSVConnector(Connector):
                                  phase1_result.connector_object)
 
             cmdb_hosts = phase1_result.connector_object.cmdb_hosts
+
+            fieldnames = phase1_result.connector_object.fieldnames
             # We always assume that the first column in our CSV is the hostname
-            hostname_field = phase1_result.connector_object.fieldnames[0]
+            hostname_field = fieldnames[0]
 
         with self.status.next_step("phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")):
             cmk_hosts = self._web_api.get_all_hosts()
 
+            cmk_tags = {}
+            fields_contain_tags = any(is_tag('tag_') for name in fieldnames)
+            if fields_contain_tags:
+                cmk_tags = self._web_api.get_hosttags()
+
         with self.status.next_step("phase2_update", _("Phase 2.3: Updating config")) as step:
-            hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(cmdb_hosts, cmk_hosts, hostname_field)
+            hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(cmdb_hosts,
+                                                                                      cmk_hosts,
+                                                                                      hostname_field,
+                                                                                      cmk_tags)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
@@ -188,7 +218,7 @@ class CSVConnector(Connector):
             else:
                 step.finish(_("No activation needed"))
 
-    def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field):
+    def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags):
         # type: (List[Dict], Dict, str) -> Tuple[List, List, List]
         """
         Partition the hosts into three groups:
@@ -256,6 +286,7 @@ class CSVConnector(Connector):
 
             return False
 
+        tag_matcher = TagMatcher(cmk_tags)
         folder_path = self._connection_config.folder
         hosts_to_create = []
         hosts_to_modify = []
@@ -269,26 +300,39 @@ class CSVConnector(Connector):
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
             except KeyError:
-                hosts_to_create.append((
-                    hostname,
-                    folder_path,
-                    {
-                        "labels": get_host_label(host, hostname_field),
-                        # Lock the host in order to be able to detect hosts
-                        # that have been created through this plugin.
-                        "locked_by": global_ident,
-                    },
-                ))
+                tags = {tag_matcher.get_tag(key): value
+                        for key, value in get_host_tags(host).items()}
+
+                attributes = {
+                    "labels": get_host_label(host, hostname_field),
+                    # Lock the host in order to be able to detect hosts
+                    # that have been created through this plugin.
+                    "locked_by": global_ident,
+                }
+                attributes.update(tags)
+
+                hosts_to_create.append((hostname, folder_path, attributes))
                 continue
 
             attributes = existing_host["attributes"]
             api_label = attributes.get("labels", {})
             future_label = get_host_label(host, hostname_field)
 
+            api_tags = get_host_tags(attributes)
+            host_tags = get_host_tags(host)
+            future_tags = {tag_matcher.get_tag(key): value
+                           for key, value in host_tags.items()}
+
             overtake_host = hostname in hosts_to_overtake
-            if overtake_host or needs_modification(api_label, future_label):
+            update_needed = (overtake_host
+                             or needs_modification(api_label, future_label)
+                             or needs_modification(api_tags, future_tags))
+
+            if update_needed:
                 api_label.update(future_label)
                 attributes["labels"] = api_label
+
+                attributes.update(future_tags)
 
                 if overtake_host:
                     attributes["locked_by"] = global_ident
@@ -413,6 +457,59 @@ class CSVConnector(Connector):
                 return False
             raise
         return True
+
+
+class TagMatcher(object):
+    """
+    Tag matching with some additonal logic.
+
+    It is unclear if the casing of the received data will match the
+    casing in CMK. Therefore we can search for matching tags in a
+    case-insensitive way.
+
+    Looking for a matching tag is always done as following:
+    * If there is a tag matching our casing we use this.
+    * If there is a tag with a different casing we use this.
+    * If no matching tag is found throw an error.
+    """
+
+    def __init__(self, d):
+        self._original = d
+        self._normalized_names = {key.lower(): key for key in d}
+
+    def __contains__(self, k):
+        if k in self._original:
+            return True
+
+        return k.lower() in self._normalized_names
+
+    def __len__(self):
+        return len(self._original)
+
+    def __iter__(self):
+        return iter(self._original)
+
+    def __getitem__(self, k):
+        try:
+            return self._original[k]
+        except KeyError:
+            key = self._normalized_names[k.lower()]
+            return self._original[key]
+
+    def get_tag(self, name):
+        # type: (str) -> str
+        """
+        Get the matching tag independent of used casing.
+
+        Throw a `ValueError` if no tag matches.
+        """
+        if name in self._original:
+            return name
+
+        try:
+            return self._normalized_names[name.lower()]
+        except KeyError:
+            raise ValueError("No matching tag for {!r} found!".format(name))
 
 
 @connector_object_registry.register
