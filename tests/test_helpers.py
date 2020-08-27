@@ -15,8 +15,8 @@ def test_getting_host_label(hostname_field):
     }
 
     expected_label = {
-        'label_label1': 1,
-        'label_another_key': 'AS df Gh',
+        'label1': 1,
+        'another_key': 'AS df Gh',
     }
 
     assert expected_label == csvconnector.get_host_label(host, hostname_field)
