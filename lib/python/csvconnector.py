@@ -85,7 +85,7 @@ def get_host_label(host, hostname_field):
             if key.startswith('label_')}
 
 
-def get_host_tags(self, attributes):
+def get_host_tags(attributes):
     # type: (Dict) -> Dict
     return {attr: value for attr, value in attributes.items()
             if is_tag(attr)}
