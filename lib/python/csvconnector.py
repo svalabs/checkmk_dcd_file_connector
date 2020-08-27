@@ -130,7 +130,7 @@ class CSVConnector(Connector):
             cmdb_hosts = list(reader)
             fields = reader.fieldnames
 
-        self._logger.info("Found %i CMDB hosts", len(cmdb_hosts))
+        self._logger.info("Found %i hosts in CSV file", len(cmdb_hosts))
         return Phase1Result(CSVConnectorHosts(cmdb_hosts, fields), self._status)
 
     def _execute_phase2(self, phase1_result):
@@ -176,7 +176,7 @@ class CSVConnector(Connector):
             else:
                 change_message = _("Nothing changed")
 
-            self._logger.verbose(change_message)
+            self._logger.info(change_message)
             step.finish(change_message)
 
         with self.status.next_step("phase2_activate", _("Phase 2.4: Activating changes")) as step:
@@ -232,7 +232,7 @@ class CSVConnector(Connector):
                 self._logger.debug("Host %r already exists as an unrelated host", host_name)
                 unrelated_hosts.add(host_name)
 
-        self._logger.verbose(
+        self._logger.info(
             "Hosts: %i existing, %i existing but unrelated",
             len(hosts_managed_by_plugin),
             len(unrelated_hosts),
@@ -302,7 +302,7 @@ class CSVConnector(Connector):
         # API requires this to be a list
         hosts_to_delete = list(set(hosts_managed_by_plugin) - cmdb_hostnames)
 
-        self._logger.verbose(
+        self._logger.info(
             "Hosts: %i to create, %i to modify, %i to delete",
             len(hosts_to_create),
             len(hosts_to_modify),
