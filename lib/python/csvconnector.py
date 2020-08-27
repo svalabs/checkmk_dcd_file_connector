@@ -72,7 +72,13 @@ def normalize_hostname(hostname):
 
 def get_host_label(host, hostname_field):
     # type: (Dict, str) -> Dict
-    return {key: value for key, value in host.items()
+    def unlabelify(value):
+        if value.startswith('label_'):
+            return value[6:]
+
+        return value
+
+    return {unlabelify(key): value for key, value in host.items()
             if key != hostname_field and key.startswith('label_')}
 
 
