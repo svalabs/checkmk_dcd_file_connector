@@ -1,5 +1,5 @@
 import pytest
-import csvconnector.helper as helper
+import csvconnector
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def test_getting_host_label(hostname_field):
         'another_key': 'AS df Gh',
     }
 
-    assert expected_label == helper.get_host_label(host, hostname_field)
+    assert expected_label == csvconnector.get_host_label(host, hostname_field)
 
 
 @pytest.mark.parametrize("key, expected_key, value", (
@@ -33,7 +33,7 @@ def test_getting_host_label_transformation(hostname_field, key, expected_key, va
 
     expected_label = {expected_key: value}
 
-    assert expected_label == helper.get_host_label(host, hostname_field)
+    assert expected_label == csvconnector.get_host_label(host, hostname_field)
 
 
 @pytest.mark.parametrize("hostname, expected_hostname", [
@@ -42,4 +42,4 @@ def test_getting_host_label_transformation(hostname_field, key, expected_key, va
     ('my host', 'my_host'),
 ])
 def test_normalize_hostname(hostname, expected_hostname):
-    assert expected_hostname == helper.normalize_hostname(hostname)
+    assert expected_hostname == csvconnector.normalize_hostname(hostname)
