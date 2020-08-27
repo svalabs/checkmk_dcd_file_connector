@@ -98,9 +98,6 @@ def is_tag(name):
     Checks for attributes that begin 'tag_' as this is how the
     CMK API handles this cases.
     """
-    if name.startswith('tag_'):
-        return True
-
     return name.lower().startswith('tag_')
 
 
