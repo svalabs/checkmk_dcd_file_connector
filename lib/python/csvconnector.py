@@ -64,7 +64,15 @@ from cmk.gui.valuespec import (
     RegExpUnicode,
 )
 
-from .helper import normalize_hostname, get_host_label
+
+def normalize_hostname(hostname):
+    # type: (str) -> str
+    return hostname.lower().replace(' ', '_')
+
+
+def get_host_label(host, hostname_field):
+    # type: (Dict, str) -> Dict
+    return {key.lower(): value for key, value in host.items() if key != hostname_field}
 
 
 @connector_type_registry.register
