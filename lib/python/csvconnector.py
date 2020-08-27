@@ -179,7 +179,7 @@ class CSVConnector(Connector):
             cmk_hosts = self._web_api.get_all_hosts()
 
             cmk_tags = {}
-            fields_contain_tags = any(is_tag('tag_') for name in fieldnames)
+            fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
                 cmk_tags = self._web_api.get_hosttags()
 
