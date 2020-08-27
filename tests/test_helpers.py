@@ -43,3 +43,14 @@ def test_getting_host_label_transformation(hostname_field, key, expected_key, va
 ])
 def test_normalize_hostname(hostname, expected_hostname):
     assert expected_hostname == csvconnector.normalize_hostname(hostname)
+
+
+@pytest.mark.parametrize("value", [
+    'tAg_abcd',
+    'tag_defg',
+    'TAG_GHIJ',
+    pytest.param('tagged_value', marks=pytest.mark.xfail),
+    pytest.param('something_tag_thingy', marks=pytest.mark.xfail),
+])
+def test_is_tag(value):
+    assert csvconnector.is_tag(value)
