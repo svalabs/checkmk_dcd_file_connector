@@ -321,6 +321,18 @@ class CSVConnector(Connector):
 
             return False
 
+        def create_host_tags(host_tags):
+            tags = {tag_matcher.get_tag(key): value
+                    for key, value in host_tags.items()}
+
+            for tag, choice in tags.items():
+                try:
+                    tag_matcher.is_possible_value(tag, choice, True)
+                except ValueError as verr:
+                    self._logger.error(verr)
+
+            return tags
+
         tag_matcher = TagMatcher(cmk_tags)
         folder_path = self._connection_config.folder
         hosts_to_create = []
@@ -335,15 +347,14 @@ class CSVConnector(Connector):
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
             except KeyError:
-                tags = {tag_matcher.get_tag(key): value
-                        for key, value in get_host_tags(host).items()}
-
                 attributes = {
                     "labels": get_host_label(host, hostname_field),
                     # Lock the host in order to be able to detect hosts
                     # that have been created through this plugin.
                     "locked_by": global_ident,
                 }
+
+                tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
 
                 hosts_to_create.append((hostname, folder_path, attributes))
@@ -355,8 +366,7 @@ class CSVConnector(Connector):
 
             api_tags = get_host_tags(attributes)
             host_tags = get_host_tags(host)
-            future_tags = {tag_matcher.get_tag(key): value
-                           for key, value in host_tags.items()}
+            future_tags = create_host_tags(host_tags)
 
             overtake_host = hostname in hosts_to_overtake
             update_needed = (overtake_host
@@ -545,6 +555,17 @@ class TagMatcher(object):
             return self._normalized_names[name.lower()]
         except KeyError:
             raise ValueError("No matching tag for {!r} found!".format(name))
+
+    def is_possible_value(self, tag, value, raise_error=False):
+        tag = self.get_tag(tag)
+        values = self._original[tag]
+        match_found = value in values
+
+        if raise_error and not match_found:
+            raise ValueError("{!r} is no possible choice for tag {}. "
+                             "Valid tags are: {}".format(value, tag, ', '.join(values)))
+
+        return match_found
 
 
 @connector_object_registry.register
