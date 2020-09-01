@@ -36,6 +36,19 @@ def test_getting_host_label_transformation(hostname_field, key, expected_key, va
     assert expected_label == csvconnector.get_host_label(host, hostname_field)
 
 
+@pytest.mark.parametrize("attributes, expected_result",[
+    ({}, {}),
+    ({'tag_foo': 'bar'}, {}),
+    ({'tag_foo': 'bar', 'city': 'Mexico'}, {'city': 'Mexico'}),
+    ({'song': 'surfacing', 'city': 'Mexico'},
+     {'song': 'surfacing', 'city': 'Mexico'}),
+])
+def test_getting_host_label_ignores_tags(attributes, expected_result):
+    host = {hostname_field: 'testhost'}
+    host.update(attributes)
+
+    assert expected_result == csvconnector.get_host_label(host, hostname_field)
+
 @pytest.mark.parametrize("hostname, expected_hostname", [
     ('ABcd', 'abcd'),
     ('aBCd', 'abcd'),
