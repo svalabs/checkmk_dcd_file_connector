@@ -82,7 +82,7 @@ def get_host_label(host, hostname_field):
            if key != hostname_field}
 
     return {unlabelify(key): value for key, value in tmp.items()
-            if key.startswith('label_')}
+            if not is_tag(key)}
 
 
 def get_host_tags(attributes):
