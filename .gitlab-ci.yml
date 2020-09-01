@@ -24,7 +24,10 @@ run tests:
   stage: test
   script:
     - pip install pytest pytest-cov
-    - pytest --cov=csvconnector --cov-report term-missing tests/
+    - pytest --junit-xml testreport.xml --cov=csvconnector --cov-report term-missing tests/
+  artifacts:
+    reports:
+      junit: testreport.xml
 
 
 create mkp:
