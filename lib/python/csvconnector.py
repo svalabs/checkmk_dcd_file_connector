@@ -101,6 +101,19 @@ def is_tag(name):
     return name.lower().startswith('tag_')
 
 
+def create_hostlike_tags(tags_from_cmk):
+    """
+    Create tags in a format that is similar to the ones
+    present at hosts.
+
+    Tags at a host are prefixed with 'tag_'
+    """
+    return {
+        'tag_' + tag['id']: [choice['id'] for choice in tag['tags']]
+        for tag in tags_from_cmk
+    }
+
+
 @connector_type_registry.register
 class CSVConnectorType(ConnectorType):
     def name(self):
@@ -181,7 +194,23 @@ class CSVConnector(Connector):
             cmk_tags = {}
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
-                cmk_tags = self._web_api.get_hosttags()
+                # The builtin _web_api only has methods for very few
+                # API commands. In an ideal world we could directly
+                # call the API like this:
+                # cmk_tags = self._web_api.get_hosttags()
+
+                # The following lines can be used to debug _web_api.
+                # self._logger.info("Dir: {}".format(dir(self._web_api)))
+                # import inspect
+                # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
+
+                # Working around to get the required results from
+                # the API.
+                # The second parameter has to be a dict.
+                tag_response = self._web_api._api_request('webapi.py?action=get_hosttags', {})
+
+                cmk_tags = create_hostlike_tags(tag_response["tag_groups"])
+                cmk_tags.update(create_hostlike_tags(tag_response['builtin']['tag_groups']))
 
         with self.status.next_step("phase2_update", _("Phase 2.3: Updating config")) as step:
             hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(cmdb_hosts,
