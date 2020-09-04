@@ -41,7 +41,6 @@ create mkp:
     # Converting info into info.json
     - python -c 'import json; f = open("info"); exec("j=%s" % f.read()); fj = open("info.json", "w"); json.dump(j, fj)'
     # Creating required tar files
-    - tar -cv -C bin/ -f bin.tar dcd
     - tar -cv -C lib/ -f lib.tar python/
     - tar -cv -C web/ -f web.tar plugins/wato/
     # Packing the final archive
