@@ -38,13 +38,18 @@ from cmk.gui.valuespec import (
 
 @connector_parameters_registry.register
 class CSVConnectorParameters(ConnectorParameters):
-    def name(self):
+
+    @classmethod
+    def name(cls):
+        # type: () -> str
         return "csvconnector"
 
     def title(self):
+        # type: () -> str
         return _("CSV import")
 
     def description(self):
+        # type: () -> str
         return _("Connector for importing data from a CSV file.")
 
     def valuespec(self):
