@@ -1,5 +1,3 @@
-image: python:3
-
 stages:
   - test
   - qa
@@ -8,19 +6,24 @@ stages:
 
 pylint:
   stage: qa
+  image: python:3
   script:
     - pip install pylint
-    - pylint --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+    - pylint lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+  allow_failure: true
 
 
 flake8:
   stage: qa
+  image: python:3
   script:
     - pip install flake8
-    - flake8 --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+    - flake8 lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+  allow_failure: true
 
 
 run tests:
+  image: python:3
   stage: test
   script:
     - pip install pytest pytest-cov
