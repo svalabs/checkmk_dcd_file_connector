@@ -10,14 +10,16 @@ pylint:
   stage: qa
   script:
     - pip install pylint
-    - pylint --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+    - pylint lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+  allow_failure: true
 
 
 flake8:
   stage: qa
   script:
     - pip install flake8
-    - flake8 --exit-zero lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+    - flake8 lib/python/csvconnector.py web/plugins/wato/csvconnector.py
+  allow_failure: true
 
 
 run tests:
