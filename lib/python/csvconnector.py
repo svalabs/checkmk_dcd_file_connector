@@ -383,6 +383,12 @@ class CSVConnector(Connector):
                     self._logger.info("Overtaking host %r", hostname)
                     attributes["locked_by"] = global_ident
 
+                try:
+                    del attributes["hostname"]
+                    self._logger.debug("Host %r contained attribute 'hostname'. Original data: %r", hostname, host)
+                except KeyError:
+                    pass  # Nothing to do
+
                 hosts_to_modify.append((hostname, attributes, []))
 
         cmdb_hostnames = set(
