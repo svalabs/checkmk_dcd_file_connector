@@ -254,7 +254,7 @@ class CSVConnector(Connector):
                 step.finish(_("No activation needed"))
 
     def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags):
-        # type: (List[Dict], Dict, str) -> Tuple[List, List, List]
+        # type: (List[Dict], Dict, str, Dict) -> Tuple[List, List, List]
         """
         Partition the hosts into three groups:
 
@@ -291,14 +291,14 @@ class CSVConnector(Connector):
                 # plugin.
                 # To avoid a hostile takeover this only is done for
                 # hosts that are not locked by another plugin.
-                self._logger.info("Overtaking host %r", host_name)
+                self._logger.debug("Marking host %r for takeover", host_name)
                 hosts_to_overtake.add(host_name)
             else:
                 self._logger.debug("Host %r already exists as an unrelated host", host_name)
                 unrelated_hosts.add(host_name)
 
         self._logger.info(
-            "Hosts: %i existing, %i existing but unrelated",
+            "Hosts: %i managed, %i unrelated",
             len(hosts_managed_by_plugin),
             len(unrelated_hosts),
         )
@@ -380,7 +380,14 @@ class CSVConnector(Connector):
                 attributes.update(future_tags)
 
                 if overtake_host:
+                    self._logger.info("Overtaking host %r", hostname)
                     attributes["locked_by"] = global_ident
+
+                try:
+                    del attributes["hostname"]
+                    self._logger.debug("Host %r contained attribute 'hostname'. Original data: %r", hostname, host)
+                except KeyError:
+                    pass  # Nothing to do
 
                 hosts_to_modify.append((hostname, attributes, []))
 
