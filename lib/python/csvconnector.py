@@ -254,7 +254,7 @@ class CSVConnector(Connector):
                 step.finish(_("No activation needed"))
 
     def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags):
-        # type: (List[Dict], Dict, str) -> Tuple[List, List, List]
+        # type: (List[Dict], Dict, str, Dict) -> Tuple[List, List, List]
         """
         Partition the hosts into three groups:
 
