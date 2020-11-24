@@ -399,7 +399,7 @@ class CSVConnector(Connector):
         hosts_to_delete = list(set(hosts_managed_by_plugin) - cmdb_hostnames)
 
         self._logger.info(
-            "Hosts: %i to create, %i to modify, %i to delete",
+            "Planned host actions: %i to create, %i to modify, %i to delete",
             len(hosts_to_create),
             len(hosts_to_modify),
             len(hosts_to_delete),
