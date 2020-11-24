@@ -291,7 +291,7 @@ class CSVConnector(Connector):
                 # plugin.
                 # To avoid a hostile takeover this only is done for
                 # hosts that are not locked by another plugin.
-                self._logger.info("Overtaking host %r", host_name)
+                self._logger.debug("Marking host %r for takeover", host_name)
                 hosts_to_overtake.add(host_name)
             else:
                 self._logger.debug("Host %r already exists as an unrelated host", host_name)
@@ -380,6 +380,7 @@ class CSVConnector(Connector):
                 attributes.update(future_tags)
 
                 if overtake_host:
+                    self._logger.info("Overtaking host %r", hostname)
                     attributes["locked_by"] = global_ident
 
                 hosts_to_modify.append((hostname, attributes, []))
