@@ -18,8 +18,16 @@ to
 DAEMON=$OMD_ROOT/local/bin/dcd
 ```
 
-
 ## Building
 
 The project creates a build with every push.
 Adjust the version in the `info` file accordingly if you plan to release.
+
+## Upgrading
+
+Since this package brings it's own dcd for 1.6 simply uploading the package is not enough to make use of it.
+In order to use the new version you have to restart the dcd of that site:
+
+```bash
+omd restart dcd
+```
