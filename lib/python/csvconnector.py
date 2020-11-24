@@ -38,6 +38,7 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v0 import (  # noqa: F401 # p
     NullObject,
 )
 
+
 def normalize_hostname(hostname):
     # type: (str) -> str
     return hostname.lower().replace(' ', '_')
