@@ -298,7 +298,7 @@ class CSVConnector(Connector):
                 unrelated_hosts.add(host_name)
 
         self._logger.info(
-            "Hosts: %i existing, %i existing but unrelated",
+            "Hosts: %i managed, %i unrelated",
             len(hosts_managed_by_plugin),
             len(unrelated_hosts),
         )
