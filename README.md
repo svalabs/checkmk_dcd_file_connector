@@ -9,5 +9,5 @@ This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.chec
 
 ## Building
 
-The project creates a build with every push.
+The project creates a build with every tag.
 Adjust the version in the `info` file accordingly if you plan to release.
