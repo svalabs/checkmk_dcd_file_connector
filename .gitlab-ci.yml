@@ -18,7 +18,7 @@ flake8:
   image: python:3
   script:
     - pip install flake8
-    - flake8 lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
+    - flake8 --ignore=E501 lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
   allow_failure: true
 
 
