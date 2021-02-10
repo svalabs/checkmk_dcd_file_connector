@@ -1,7 +1,7 @@
 {'author': u'Niko Wenselowski',
  'description': u'Import data from an CSV file.\n',
  'download_url': '',
- 'files': {'lib': ['python3/cmk/cee/dcd/plugins/connectors/csvconnector.py'],
+ 'files': {'lib': ['lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py']
            'web': ['plugins/wato/csvconnector.py']},
  'name': 'csvconnector',
  'num_files': 2,
