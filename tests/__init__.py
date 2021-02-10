@@ -3,7 +3,7 @@ import sys
 from unittest.mock import Mock
 
 test_dir = os.path.dirname(__file__)
-module_dir = os.path.join(test_dir, '..', 'lib', 'python')
+module_dir = os.path.join(test_dir, '..', 'lib', 'check_mk', 'cee', 'dcd', 'plugins', 'connectors')
 
 sys.path.append(module_dir)
 
