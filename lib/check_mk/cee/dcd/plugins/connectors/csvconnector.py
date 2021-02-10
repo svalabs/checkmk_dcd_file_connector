@@ -342,8 +342,8 @@ class CSVConnector(Connector):
 
             overtake_host = hostname in hosts_to_overtake
             update_needed = (overtake_host
-                             or needs_modification(api_label, future_label)
-                             or needs_modification(api_tags, future_tags))
+                             or needs_modification(api_label, future_label)  # noqa: W503
+                             or needs_modification(api_tags, future_tags))  # noqa: W503
 
             if update_needed:
                 api_label.update(future_label)
