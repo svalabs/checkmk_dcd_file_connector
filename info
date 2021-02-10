@@ -1,11 +1,11 @@
 {'author': u'Niko Wenselowski',
  'description': u'Import data from an CSV file.\n',
  'download_url': '',
- 'files': {'lib': ['python/csvconnector.py'],
+ 'files': {'lib': ['python3/cmk/cee/dcd/plugins/connectors/csvconnector.py'],
            'web': ['plugins/wato/csvconnector.py']},
  'name': 'csvconnector',
  'num_files': 2,
  'title': u'CSV Connector',
  'version': '2.1.4',
- 'version.min_required': '1.6.0',
- 'version.packaged': '1.6.0p7'}
+ 'version.min_required': '2.0.0b5',
+ 'version.packaged': '2.0.0b6'}
