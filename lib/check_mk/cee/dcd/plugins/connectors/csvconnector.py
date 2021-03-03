@@ -17,6 +17,7 @@
 import csv
 import re
 import time
+from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
     Dict, List, Tuple,
@@ -83,6 +84,13 @@ def create_hostlike_tags(tags_from_cmk):
         'tag_' + tag['id']: [choice['id'] for choice in tag['tags']]
         for tag in tags_from_cmk
     }
+
+
+def chunks(iterable, count):
+    "Collect data into fixed-length chunks or blocks"
+    # chunks('ABCDEFG', 3) --> ABC DEF Gxx"
+    args = [iter(iterable)] * count
+    return zip_longest(*args)
 
 
 @connector_config_registry.register
@@ -196,6 +204,8 @@ class CSVConnector(Connector):
                                                                                       cmk_hosts,
                                                                                       hostname_field,
                                                                                       cmk_tags)
+
+            self._chunk_size = 200
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
@@ -392,7 +402,14 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to create")
             return []
 
-        created_host_names = self._create_hosts(hosts_to_create)
+        created_host_names = []
+        for chunk in chunks(hosts_to_create, self._chunk_size):
+            created_hosts = self._create_hosts([h for h in chunk if h])
+
+            if created_hosts:
+                created_host_names.extend(created_hosts)
+                self._activate_changes()
+
         self._logger.debug("Created %i hosts", len(created_host_names))
         if not created_host_names:
             return []
@@ -451,7 +468,14 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to modify")
             return []
 
-        modified_host_names = self._modify_hosts(hosts_to_modify)
+        modified_host_names = []
+        for chunk in chunks(hosts_to_modify, self._chunk_size):
+            modified_hosts = self._modify_hosts([h for h in chunk if h])
+
+            if modified_hosts:
+                modified_host_names.extend(modified_hosts)
+                self._activate_changes()
+
         self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
 
@@ -476,7 +500,10 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to delete")
             return []
 
-        self._web_api.delete_hosts(hosts_to_delete)
+        for chunk in chunks(hosts_to_delete, self._chunk_size):
+            self._web_api.delete_hosts([h for h in chunk if h])
+            self._activate_changes()
+
         self._logger.debug("Deleted %i hosts (%s)", len(hosts_to_delete),
                            ", ".join(hosts_to_delete))
 
