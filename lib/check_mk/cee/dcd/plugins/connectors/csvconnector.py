@@ -26,7 +26,7 @@ from cmk.utils.i18n import _
 
 from cmk.cee.dcd.web_api import MKAPIError
 
-from cmk.cee.dcd.plugins.connectors.connectors_api.v0 import (  # noqa: F401 # pylint: disable=unused-import
+from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # pylint: disable=unused-import
     connector_config_registry,
     ConnectorConfig,
     connector_registry,

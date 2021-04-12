@@ -6,6 +6,6 @@
  'name': 'csvconnector',
  'num_files': 2,
  'title': u'CSV Connector',
- 'version': '2.2.0',
- 'version.min_required': '2.0.0b5',
- 'version.packaged': '2.0.0b6'}
+ 'version': '2.2.1',
+ 'version.min_required': '2.0.0p1',
+ 'version.packaged': '2.0.0p1'}
