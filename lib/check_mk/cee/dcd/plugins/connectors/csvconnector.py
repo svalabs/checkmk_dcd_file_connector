@@ -434,11 +434,9 @@ class CSVConnector(Connector):
         while not condition() and time.time() - start < timeout:
             time.sleep(interval)
 
-        condition_result = condition()
-        if not condition_result:
+        if not condition():
             self._logger.error(
                 "Timeout out waiting for the bulk discovery to finish (Timeout: %d sec)",
-                condition_result,
                 timeout)
         else:
             self._logger.debug("Bulk discovery finished after %0.2f seconds", time.time() - start)
