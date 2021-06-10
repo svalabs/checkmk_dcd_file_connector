@@ -28,6 +28,7 @@ from cmk.gui.plugins.wato import FullPathFolderChoice
 
 from cmk.gui.valuespec import (
     Age,
+    Checkbox,
     Dictionary,
     Filename,
     Integer,
