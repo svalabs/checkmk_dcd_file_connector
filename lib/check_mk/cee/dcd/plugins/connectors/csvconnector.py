@@ -110,6 +110,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "folder": self.folder,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
+            "chunk_size": self.chunk_size,
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
@@ -119,6 +120,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.folder = connector_cfg["folder"]  # type: str
         self.host_filters = connector_cfg.get("host_filters", [])  # type: list
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
+        self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
 
 
 @connector_registry.register
@@ -205,7 +207,7 @@ class CSVConnector(Connector):
                                                                                       hostname_field,
                                                                                       cmk_tags)
 
-            self._chunk_size = 200
+            self._chunk_size = self._connection_config.chunk_size
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)

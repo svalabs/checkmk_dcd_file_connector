@@ -30,6 +30,7 @@ from cmk.gui.valuespec import (
     Age,
     Dictionary,
     Filename,
+    Integer,
     ListOfStrings,
     RegExpUnicode,
 )
@@ -91,8 +92,19 @@ class CSVConnectorParameters(ConnectorParameters):
                     orientation="horizontal",
                     valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
                 )),
+                ("chunk_size", Integer(
+                    default_value=0,
+                    minvalue=0,
+                    title=_("Chunk size"),
+                    help=_(
+                        "Split processing of hosts into smaller parts of the "
+                        "given size. "
+                        "This setting can reduce performance impacts "
+                        "when working with large change sets. "
+                        "Setting it to 0 disables splitting."),
+                )),
             ],
-            optional_keys=["host_filters", "host_overtake_filters"],
+            optional_keys=["host_filters", "host_overtake_filters", "chunk_size"],
         )
 
     @staticmethod
