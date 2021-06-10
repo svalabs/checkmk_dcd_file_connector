@@ -425,12 +425,13 @@ class CSVConnector(Connector):
     def _wait_for_bulk_discovery(self):
         # type: () -> None
         self._logger.debug("Waiting for bulk discovery to complete")
-        timeout, interval = 60, 0.5
+        timeout = 60  # seconds
+        interval = 0.5  # seconds
+        start = time.time()
 
         def discovery_stopped():
             return self._web_api.bulk_discovery_status()["is_active"] is False
 
-        start = time.time()
         while not discovery_stopped() and time.time() - start < timeout:
             time.sleep(interval)
 
