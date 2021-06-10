@@ -111,6 +111,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
+            "use_service_discovery": self.use_service_discovery,
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
@@ -121,6 +122,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.host_filters = connector_cfg.get("host_filters", [])  # type: list
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
         self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
+        self.use_service_discovery = connector_cfg["use_service_discovery"]  # type: bool
 
 
 @connector_registry.register
@@ -421,7 +423,8 @@ class CSVConnector(Connector):
         if not created_host_names:
             return []
 
-        self._discover_hosts(created_host_names)
+        if self._connection_config.use_service_discovery:
+            self._discover_hosts(created_host_names)
 
         return created_host_names
 

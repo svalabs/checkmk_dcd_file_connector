@@ -103,6 +103,13 @@ class CSVConnectorParameters(ConnectorParameters):
                         "when working with large change sets. "
                         "Setting it to 0 disables splitting."),
                 )),
+                ("use_service_discovery", Checkbox(
+                    default_value=True,
+                    title=_("Use service discovery"),
+                    help=_(
+                        "Controls if service discovery is triggered for new hosts."
+                    ),
+                )),
             ],
             optional_keys=["host_filters", "host_overtake_filters", "chunk_size"],
         )
