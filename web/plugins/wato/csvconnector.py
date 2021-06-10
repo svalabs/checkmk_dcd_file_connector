@@ -99,6 +99,8 @@ class CSVConnectorParameters(ConnectorParameters):
                     help=_(
                         "Split processing of hosts into smaller parts of the "
                         "given size. "
+                        "After each part is processed an activation of the "
+                        "changes is triggered. "
                         "This setting can reduce performance impacts "
                         "when working with large change sets. "
                         "Setting it to 0 disables splitting."),
