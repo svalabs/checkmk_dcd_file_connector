@@ -6,7 +6,7 @@ stages:
 
 pylint:
   stage: qa
-  dependencies: []
+  needs: []
   image: python:3
   script:
     - pip install pylint
@@ -16,7 +16,7 @@ pylint:
 
 flake8:
   stage: qa
-  dependencies: []
+  needs: []
   image: python:3
   script:
     - pip install flake8
@@ -37,7 +37,7 @@ run tests:
 
 create mkp:
   stage: package
-  dependencies: []
+  needs: []
   image: centos:7
   only:
     - tags
