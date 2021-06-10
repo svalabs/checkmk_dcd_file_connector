@@ -411,13 +411,17 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to create")
             return []
 
-        created_host_names = []
-        for chunk in chunks(hosts_to_create, self._chunk_size):
-            created_hosts = self._create_hosts([h for h in chunk if h])
+        if self._chunk_size:
+            created_host_names = []
+            for chunk in chunks(hosts_to_create, self._chunk_size):
+                created_hosts = self._create_hosts([h for h in chunk if h])
 
-            if created_hosts:
-                created_host_names.extend(created_hosts)
-                self._activate_changes()
+                if created_hosts:
+                    created_host_names.extend(created_hosts)
+                    self._logger.debug("Activating changes...")
+                    self._activate_changes()
+        else:
+            created_host_names = self._create_hosts(hosts_to_create)
 
         self._logger.debug("Created %i hosts", len(created_host_names))
         if not created_host_names:
@@ -478,13 +482,17 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to modify")
             return []
 
-        modified_host_names = []
-        for chunk in chunks(hosts_to_modify, self._chunk_size):
-            modified_hosts = self._modify_hosts([h for h in chunk if h])
+        if self._chunk_size:
+            modified_host_names = []
+            for chunk in chunks(hosts_to_modify, self._chunk_size):
+                modified_hosts = self._modify_hosts([h for h in chunk if h])
 
-            if modified_hosts:
-                modified_host_names.extend(modified_hosts)
-                self._activate_changes()
+                if modified_hosts:
+                    modified_host_names.extend(modified_hosts)
+                    self._logger.debug("Activating changes...")
+                    self._activate_changes()
+        else:
+            modified_host_names = self._modify_hosts(hosts_to_modify)
 
         self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
@@ -510,9 +518,12 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to delete")
             return []
 
-        for chunk in chunks(hosts_to_delete, self._chunk_size):
-            self._web_api.delete_hosts([h for h in chunk if h])
-            self._activate_changes()
+        if self._chunk_size:
+            for chunk in chunks(hosts_to_delete, self._chunk_size):
+                self._web_api.delete_hosts([h for h in chunk if h])
+                self._activate_changes()
+        else:
+            self._web_api.delete_hosts(hosts_to_delete)
 
         self._logger.debug("Deleted %i hosts (%s)", len(hosts_to_delete),
                            ", ".join(hosts_to_delete))
