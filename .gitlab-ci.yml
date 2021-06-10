@@ -37,7 +37,7 @@ run tests:
 
 create mkp:
   stage: package
-  needs: []
+  needs: ["run tests"]
   image: centos:7
   only:
     - tags
