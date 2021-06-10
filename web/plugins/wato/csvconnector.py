@@ -57,7 +57,7 @@ class CSVConnectorParameters(ConnectorParameters):
                 ("interval", Age(
                     title=_("Sync interval"),
                     minvalue=1,
-                    default_value=60,
+                    default_value=300,
                 )),
                 ("path", Filename(
                     title=_("Path of the CSV file to import."),
