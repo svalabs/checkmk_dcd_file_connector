@@ -432,7 +432,10 @@ class CSVConnector(Connector):
         def discovery_stopped():
             return self._web_api.bulk_discovery_status()["is_active"] is False
 
-        while not discovery_stopped() and time.time() - start < timeout:
+        def get_duration():
+            return time.time() - start
+
+        while not discovery_stopped() and get_duration() < timeout:
             time.sleep(interval)
 
         if not discovery_stopped():
@@ -440,7 +443,7 @@ class CSVConnector(Connector):
                 "Timeout out waiting for the bulk discovery to finish (Timeout: %d sec)",
                 timeout)
         else:
-            self._logger.debug("Bulk discovery finished after %0.2f seconds", time.time() - start)
+            self._logger.debug("Bulk discovery finished after %0.2f seconds", get_duration())
 
     def _modify_existing_hosts(self, hosts_to_modify):
         # type: (List) -> List[str]
