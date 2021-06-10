@@ -60,8 +60,8 @@ class CSVConnectorParameters(ConnectorParameters):
                     default_value=60,
                 )),
                 ("path", Filename(
-                    title=_("Path of to the CSV file to import."),
-                    help=_("This is the path to the CSV file. "
+                    title=_("Path of the CSV file to import."),
+                    help=_("This is the absolute path to the CSV file. "
                            "The first column of the file is assumed to contain the hostname."),
                     allow_empty=False,
                     validate=self.validate_csv,
