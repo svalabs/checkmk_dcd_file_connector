@@ -208,6 +208,8 @@ class CSVConnector(Connector):
                                                                                       cmk_tags)
 
             self._chunk_size = self._connection_config.chunk_size
+            if self._chunk_size:
+                self._logger.info("Processing in chunks of %i", self._chunk_size)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
