@@ -28,8 +28,8 @@ from cmk.gui.plugins.wato import FullPathFolderChoice
 
 from cmk.gui.valuespec import (
     Age,
-    Filename,
     Dictionary,
+    Filename,
     ListOfStrings,
     RegExpUnicode,
 )
