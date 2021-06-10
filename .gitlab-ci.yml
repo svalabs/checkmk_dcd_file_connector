@@ -6,6 +6,7 @@ stages:
 
 pylint:
   stage: qa
+  dependencies: []
   image: python:3
   script:
     - pip install pylint
@@ -15,6 +16,7 @@ pylint:
 
 flake8:
   stage: qa
+  dependencies: []
   image: python:3
   script:
     - pip install flake8
@@ -23,8 +25,8 @@ flake8:
 
 
 run tests:
-  image: python:3
   stage: test
+  image: python:3
   script:
     - pip install pytest pytest-cov
     - pytest --junit-xml testreport.xml --cov=csvconnector --cov-report term-missing tests/
@@ -35,6 +37,7 @@ run tests:
 
 create mkp:
   stage: package
+  dependencies: []
   image: centos:7
   only:
     - tags
