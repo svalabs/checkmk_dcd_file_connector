@@ -521,6 +521,7 @@ class CSVConnector(Connector):
         if self._chunk_size:
             for chunk in chunks(hosts_to_delete, self._chunk_size):
                 self._web_api.delete_hosts([h for h in chunk if h])
+                self._logger.debug("Activating changes...")
                 self._activate_changes()
         else:
             self._web_api.delete_hosts(hosts_to_delete)
