@@ -17,6 +17,7 @@
 import csv
 import re
 import time
+from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
     Dict, List, Tuple,
@@ -85,6 +86,13 @@ def create_hostlike_tags(tags_from_cmk):
     }
 
 
+def chunks(iterable, count):
+    "Collect data into fixed-length chunks or blocks"
+    # chunks('ABCDEFG', 3) --> ABC DEF Gxx"
+    args = [iter(iterable)] * count
+    return zip_longest(*args)
+
+
 @connector_config_registry.register
 class CSVConnectorConfig(ConnectorConfig):
     """Loading the persisted connection config"""
@@ -102,6 +110,8 @@ class CSVConnectorConfig(ConnectorConfig):
             "folder": self.folder,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
+            "chunk_size": self.chunk_size,
+            "use_service_discovery": self.use_service_discovery,
         }
 
     def _connector_attributes_from_config(self, connector_cfg):
@@ -111,6 +121,8 @@ class CSVConnectorConfig(ConnectorConfig):
         self.folder = connector_cfg["folder"]  # type: str
         self.host_filters = connector_cfg.get("host_filters", [])  # type: list
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
+        self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
+        self.use_service_discovery = connector_cfg["use_service_discovery"]  # type: bool
 
 
 @connector_registry.register
@@ -197,6 +209,10 @@ class CSVConnector(Connector):
                                                                                       hostname_field,
                                                                                       cmk_tags)
 
+            self._chunk_size = self._connection_config.chunk_size
+            if self._chunk_size:
+                self._logger.info("Processing in chunks of %i", self._chunk_size)
+
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
             deleted_host_names = self._delete_hosts(hosts_to_delete)
@@ -224,7 +240,10 @@ class CSVConnector(Connector):
             step.finish(change_message)
 
         with self.status.next_step("phase2_activate", _("Phase 2.4: Activating changes")) as step:
-            if changes_to_hosts:
+            if changes_to_hosts and not self._chunk_size:
+                # When used with chunks each step activates the host
+                # changes they did. Therefore no further activation
+                # is needed.
                 if self._activate_changes():
                     step.finish(_("Activated the changes"))
                 else:
@@ -392,12 +411,24 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to create")
             return []
 
-        created_host_names = self._create_hosts(hosts_to_create)
+        if self._chunk_size:
+            created_host_names = []
+            for chunk in chunks(hosts_to_create, self._chunk_size):
+                created_hosts = self._create_hosts([h for h in chunk if h])
+
+                if created_hosts:
+                    created_host_names.extend(created_hosts)
+                    self._logger.debug("Activating changes...")
+                    self._activate_changes()
+        else:
+            created_host_names = self._create_hosts(hosts_to_create)
+
         self._logger.debug("Created %i hosts", len(created_host_names))
         if not created_host_names:
             return []
 
-        self._discover_hosts(created_host_names)
+        if self._connection_config.use_service_discovery:
+            self._discover_hosts(created_host_names)
 
         return created_host_names
 
@@ -425,20 +456,25 @@ class CSVConnector(Connector):
     def _wait_for_bulk_discovery(self):
         # type: () -> None
         self._logger.debug("Waiting for bulk discovery to complete")
-        timeout, interval = 60, 0.5
+        timeout = 60  # seconds
+        interval = 0.5  # seconds
+        start = time.time()
 
-        def condition():
+        def discovery_stopped():
             return self._web_api.bulk_discovery_status()["is_active"] is False
 
-        start = time.time()
-        while not condition() and time.time() - start < timeout:
+        def get_duration():
+            return time.time() - start
+
+        while not discovery_stopped() and get_duration() < timeout:
             time.sleep(interval)
-        if not condition():
+
+        if not discovery_stopped():
             self._logger.error(
-                "Timeout out waiting for the bulk discovery to finish (Timeout: %d sec)", condition,
+                "Timeout out waiting for the bulk discovery to finish (Timeout: %d sec)",
                 timeout)
         else:
-            self._logger.debug("Bulk discovery finished after %0.2f seconds", time.time() - start)
+            self._logger.debug("Bulk discovery finished after %0.2f seconds", get_duration())
 
     def _modify_existing_hosts(self, hosts_to_modify):
         # type: (List) -> List[str]
@@ -446,7 +482,18 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to modify")
             return []
 
-        modified_host_names = self._modify_hosts(hosts_to_modify)
+        if self._chunk_size:
+            modified_host_names = []
+            for chunk in chunks(hosts_to_modify, self._chunk_size):
+                modified_hosts = self._modify_hosts([h for h in chunk if h])
+
+                if modified_hosts:
+                    modified_host_names.extend(modified_hosts)
+                    self._logger.debug("Activating changes...")
+                    self._activate_changes()
+        else:
+            modified_host_names = self._modify_hosts(hosts_to_modify)
+
         self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
 
@@ -471,7 +518,14 @@ class CSVConnector(Connector):
             self._logger.debug("Nothing to delete")
             return []
 
-        self._web_api.delete_hosts(hosts_to_delete)
+        if self._chunk_size:
+            for chunk in chunks(hosts_to_delete, self._chunk_size):
+                self._web_api.delete_hosts([h for h in chunk if h])
+                self._logger.debug("Activating changes...")
+                self._activate_changes()
+        else:
+            self._web_api.delete_hosts(hosts_to_delete)
+
         self._logger.debug("Deleted %i hosts (%s)", len(hosts_to_delete),
                            ", ".join(hosts_to_delete))
 

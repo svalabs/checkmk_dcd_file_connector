@@ -28,8 +28,10 @@ from cmk.gui.plugins.wato import FullPathFolderChoice
 
 from cmk.gui.valuespec import (
     Age,
-    Filename,
+    Checkbox,
     Dictionary,
+    Filename,
+    Integer,
     ListOfStrings,
     RegExpUnicode,
 )
@@ -57,11 +59,11 @@ class CSVConnectorParameters(ConnectorParameters):
                 ("interval", Age(
                     title=_("Sync interval"),
                     minvalue=1,
-                    default_value=60,
+                    default_value=300,
                 )),
                 ("path", Filename(
-                    title=_("Path of to the CSV file to import."),
-                    help=_("This is the path to the CSV file. "
+                    title=_("Path of the CSV file to import."),
+                    help=_("This is the absolute path to the CSV file. "
                            "The first column of the file is assumed to contain the hostname."),
                     allow_empty=False,
                     validate=self.validate_csv,
@@ -91,8 +93,28 @@ class CSVConnectorParameters(ConnectorParameters):
                     orientation="horizontal",
                     valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
                 )),
+                ("chunk_size", Integer(
+                    default_value=0,
+                    minvalue=0,
+                    title=_("Chunk size"),
+                    help=_(
+                        "Split processing of hosts into smaller parts of the "
+                        "given size. "
+                        "After each part is processed an activation of the "
+                        "changes is triggered. "
+                        "This setting can reduce performance impacts "
+                        "when working with large change sets. "
+                        "Setting it to 0 disables splitting."),
+                )),
+                ("use_service_discovery", Checkbox(
+                    default_value=True,
+                    title=_("Use service discovery"),
+                    help=_(
+                        "Controls if service discovery is triggered for new hosts."
+                    ),
+                )),
             ],
-            optional_keys=["host_filters", "host_overtake_filters"],
+            optional_keys=["host_filters", "host_overtake_filters", "chunk_size"],
         )
 
     @staticmethod
