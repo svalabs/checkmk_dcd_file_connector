@@ -238,7 +238,10 @@ class CSVConnector(Connector):
             step.finish(change_message)
 
         with self.status.next_step("phase2_activate", _("Phase 2.4: Activating changes")) as step:
-            if changes_to_hosts:
+            if changes_to_hosts and not self._chunk_size:
+                # When used with chunks each step activates the host
+                # changes they did. Therefore no further activation
+                # is needed.
                 if self._activate_changes():
                     step.finish(_("Activated the changes"))
                 else:
