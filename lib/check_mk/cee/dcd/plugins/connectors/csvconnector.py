@@ -135,6 +135,13 @@ class CSVConnector(Connector):
             cmdb_hosts = list(reader)
             fields = reader.fieldnames
 
+        if not fields:
+            self._logger.error(
+                "Unable to read column name from %r. Is the file empty?",
+                self._connection_config.path,
+            )
+            raise RuntimeError("Unable to detect column names")
+
         self._logger.info("Found %i hosts in CSV file", len(cmdb_hosts))
         return Phase1Result(CSVConnectorHosts(cmdb_hosts, fields), self._status)
 
