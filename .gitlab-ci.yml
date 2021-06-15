@@ -29,10 +29,11 @@ run tests:
   image: python:3
   script:
     - pip install pytest pytest-cov
-    - pytest --junit-xml testreport.xml tests/
+    - pytest tests/
+    - coverage xml
   artifacts:
     reports:
-      junit: testreport.xml
+      junit: coverage.xml
 
 
 create mkp:
