@@ -15,6 +15,7 @@
 #                     for SVA System Vertrieb Alexander GmbH
 
 import csv
+import json
 import re
 import time
 from abc import abstractmethod
@@ -154,6 +155,53 @@ class CSVImporter(FileImporter):
             pass
 
 
+class BVQJSONImporter(FileImporter):
+    FIELD_MAPPING = (
+        # Mapping data from CMK to JSON.
+        # (CMK, JSON)
+        ("label_bvq_type", "tag"),
+        ("ipv4", "ipv4"),
+        ("ipv6", "ipv6"),
+    )
+
+    def __init__(self, filepath):
+        super().__init__(filepath)
+
+        # We know that this is our field
+        self.hostname_field = "name"
+
+    def import_hosts(self):
+        with open(self.filepath) as export_file:
+            hosts = json.load(cmdb_export)
+
+        self.hosts = [
+            self.format_host(element["hostAddress"])
+            for element in hosts
+            if "hostAddress" in element
+        ]
+
+        try:
+            self.fields = list(hosts[0].keys())
+        except IndexError:
+            # Handling the error will be done in the calling method
+            pass
+
+    def format_host(self, host):
+        # TODO: figure out how to handle these:
+        #     "masterGroupingObjectIpv4": "10.10.101.43",  -> tag "parent" in host_properties -> fragen wir bei BVQ an
+        #     "masterGroupingObjectIpv6": ""
+
+        new_host = {"name": host["name"]}
+
+        for host_key, json_key in self.FIELD_MAPPING:
+            try:
+                new_host[host_key] = host[json_key]
+            except KeyError:
+                continue
+
+        return new_host
+
+
 @connector_registry.register
 class CSVConnector(Connector):
 
@@ -175,11 +223,13 @@ class CSVConnector(Connector):
         file_format = self._connection_config.file_format
         if file_format == "csv":
             importer = CSVImporter(self._connection_config.path)
+        elif file_format == "bvq":
+            importer = BVQJSONImporter(self._connection_config.path)
         else:
             raise RuntimeError("Invalid file format {!r}".format(file_format))
 
         importer.import_hosts()
-        self._logger.info("Found %i hosts in CSV file", len(importer.hosts))
+        self._logger.info("Found %i hosts in file", len(importer.hosts))
 
         if not importer.fields:
             self._logger.error(
