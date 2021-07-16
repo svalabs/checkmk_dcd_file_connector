@@ -17,6 +17,7 @@
 import csv
 import re
 import time
+from abc import abstractmethod
 from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
@@ -125,6 +126,34 @@ class CSVConnectorConfig(ConnectorConfig):
         self.use_service_discovery = connector_cfg["use_service_discovery"]  # type: bool
 
 
+class FileImporter:
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.hosts = None
+        self.fields = None
+        self.hostname_field = None
+
+    @abstractmethod
+    def import_hosts(self):
+        pass
+
+
+class CSVImporter(FileImporter):
+
+    def import_hosts(self):
+        with open(self.filepath) as cmdb_export:
+            reader = csv.DictReader(cmdb_export)
+            self.hosts = list(reader)
+            self.fields = reader.fieldnames
+
+        try:
+            # We always assume that the first column in our CSV is the hostname
+            self.hostname_field = self.fields[0]
+        except IndexError:
+            # Handling the error will be done in the calling method
+            pass
+
+
 @connector_registry.register
 class CSVConnector(Connector):
 
@@ -142,20 +171,29 @@ class CSVConnector(Connector):
         # type: () -> Phase1Result
         """Execute the first synchronization phase"""
         self._logger.info("Execute phase 1")
-        with open(self._connection_config.path) as cmdb_export:
-            reader = csv.DictReader(cmdb_export)
-            cmdb_hosts = list(reader)
-            fields = reader.fieldnames
 
-        if not fields:
+        file_format = self._connection_config.file_format
+        if file_format == "csv":
+            importer = CSVImporter(self._connection_config.path)
+        else:
+            raise RuntimeError("Invalid file format {!r}".format(file_format))
+
+        importer.import_hosts()
+        self._logger.info("Found %i hosts in CSV file", len(importer.hosts))
+
+        if not importer.fields:
             self._logger.error(
-                "Unable to read column name from %r. Is the file empty?",
+                "Unable to read fields from %r. Is the file empty?",
                 self._connection_config.path,
             )
             raise RuntimeError("Unable to detect column names")
 
-        self._logger.info("Found %i hosts in CSV file", len(cmdb_hosts))
-        return Phase1Result(CSVConnectorHosts(cmdb_hosts, fields), self._status)
+        return Phase1Result(
+            FileConnectorHosts(importer.hosts,
+                               importer.hostname_field,
+                               importer.fields),
+            self._status
+        )
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
@@ -169,15 +207,13 @@ class CSVConnector(Connector):
             if isinstance(phase1_result.connector_object, NullObject):
                 raise ValueError("Remote site has not completed phase 1 yet")
 
-            if not isinstance(phase1_result.connector_object, CSVConnectorHosts):
+            if not isinstance(phase1_result.connector_object, FileConnectorHosts):
                 raise ValueError("Got invalid connector object as phase 1 result: %r" %
                                  phase1_result.connector_object)
 
-            cmdb_hosts = phase1_result.connector_object.cmdb_hosts
-
+            cmdb_hosts = phase1_result.connector_object.hosts
             fieldnames = phase1_result.connector_object.fieldnames
-            # We always assume that the first column in our CSV is the hostname
-            hostname_field = fieldnames[0]
+            hostname_field = phase1_result.connector_object.hostname_field
 
         with self.status.next_step("phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")):
             cmk_hosts = self._web_api.get_all_hosts()
@@ -608,18 +644,26 @@ class TagMatcher:
         return match_found
 
 
-class CSVConnectorHosts:
-    def __init__(self, cmdb_hosts, fieldnames):
-        self.cmdb_hosts = cmdb_hosts
+class FileConnectorHosts:
+    def __init__(self, hosts, hostname_field, fieldnames):
+        self.hosts = hosts
+        self.hostname_field = hostname_field
         self.fieldnames = fieldnames
 
     @classmethod
     def from_serialized_attributes(cls, serialized):
-        return cls(serialized["cmdb_hosts"], serialized["fieldnames"])
+        return cls(
+            serialized["hosts"],
+            serialized["hostname_field"],
+            serialized["fieldnames"]
+        )
 
-    def _serialize_attributes(self):
-        # type: () -> Dict
-        return {"cmdb_hosts": self.cmdb_hosts, "fieldnames": self.fieldnames}
+    def _serialize_attributes(self) -> dict:
+        return {
+            "hosts": self.hosts,
+            "hostname_field": self.hostname_field,
+            "fieldnames": self.fieldnames
+        }
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.cmdb_hosts, self.fieldnames)
+    def __repr__(self) -> str:
+        return "%s(%r, %r, %r)" % (self.__class__.__name__, self.hosts, self.hostname_field, self.fieldnames)
