@@ -174,7 +174,7 @@ class BVQJSONImporter(FileImporter):
 
     def import_hosts(self):
         with open(self.filepath) as export_file:
-            hosts = json.load(cmdb_export)
+            hosts = json.load(export_file)
 
         self.hosts = [
             self.format_host(element["hostAddress"])
