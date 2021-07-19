@@ -184,11 +184,11 @@ class BVQImporter(FileImporter):
             if "hostAddress" in element
         ]
 
-        try:
-            self.fields = list(hosts[0].keys())
-        except IndexError:
-            # Handling the error will be done in the calling method
-            pass
+        fields = set()
+        for host in self.hosts:
+            fields.update(host.keys())
+
+        self.fields = fields
 
     def format_host(self, host):
         # TODO: figure out how to handle these:
