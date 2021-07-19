@@ -132,7 +132,6 @@ class CSVConnectorConfig(ConnectorConfig):
 class FileImporter:
     "Basic file importer"
 
-
     def __init__(self, filepath):
         self.filepath = filepath
         self.hosts = None
