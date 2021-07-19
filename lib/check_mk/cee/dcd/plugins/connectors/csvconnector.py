@@ -38,13 +38,21 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
     NullObject,
 )
 
+IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
+
 
 def normalize_hostname(hostname):
     # type: (str) -> str
     return hostname.lower().replace(' ', '_')
 
 
-def get_host_label(host, hostname_field):
+def get_host_label(host: dict, hostname_field: str):
+    """
+    Get the labels from a host.
+
+    Labels are either prefixed with "_label" or are not any of the
+    known values for IPs.
+    """
     # type: (Dict, str) -> Dict
     def unlabelify(value):
         if value.startswith('label_'):
@@ -56,7 +64,17 @@ def get_host_label(host, hostname_field):
            if key != hostname_field}
 
     return {unlabelify(key): value for key, value in tmp.items()
-            if not is_tag(key)}
+            if not (is_tag(key) or key in IP_ATTRIBUTES)}
+
+
+def get_ip_address(host: dict):
+    "Tries to get an IP address for a host. If not found returns `None`."
+
+    for field in IP_ATTRIBUTES:
+        try:
+            return host[field]
+        except KeyError:
+            continue
 
 
 def get_host_tags(attributes):
@@ -424,6 +442,9 @@ class CSVConnector(Connector):
 
             return tags
 
+        def ip_needs_modification(old_ip, new_ip):
+            return old_ip == new_ip
+
         tag_matcher = TagMatcher(cmk_tags)
         folder_path = self._connection_config.folder
         hosts_to_create = []
@@ -445,6 +466,10 @@ class CSVConnector(Connector):
                     "locked_by": global_ident,
                 }
 
+                ip_address = get_ip_address(host)
+                if ip_address is not None:
+                    attributes["ipaddress"] = ip_address
+
                 tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
 
@@ -459,14 +484,19 @@ class CSVConnector(Connector):
             host_tags = get_host_tags(host)
             future_tags = create_host_tags(host_tags)
 
+            existing_ip = attributes.get("ipaddress")
+            future_ip = get_ip_address(host)
+
             overtake_host = hostname in hosts_to_overtake
             update_needed = (overtake_host
                              or needs_modification(api_label, future_label)  # noqa: W503
-                             or needs_modification(api_tags, future_tags))  # noqa: W503
+                             or needs_modification(api_tags, future_tags)
+                             or ip_needs_modification(existing_ip, future_ip))  # noqa: W503
 
             if update_needed:
                 api_label.update(future_label)
                 attributes["labels"] = api_label
+                attributes["ipaddress"] = future_ip
 
                 attributes.update(future_tags)
 
