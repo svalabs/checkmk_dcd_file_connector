@@ -130,6 +130,9 @@ class CSVConnectorConfig(ConnectorConfig):
 
 
 class FileImporter:
+    "Basic file importer"
+
+
     def __init__(self, filepath):
         self.filepath = filepath
         self.hosts = None
@@ -138,10 +141,11 @@ class FileImporter:
 
     @abstractmethod
     def import_hosts(self):
-        pass
+        "This function will be called for importing the hosts."
 
 
 class CSVImporter(FileImporter):
+    "Import hosts from a CSV file"
 
     def import_hosts(self):
         with open(self.filepath) as cmdb_export:
