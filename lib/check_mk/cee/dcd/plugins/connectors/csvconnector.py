@@ -244,7 +244,7 @@ class CSVConnector(Connector):
                 "Unable to read fields from %r. Is the file empty?",
                 self._connection_config.path,
             )
-            raise RuntimeError("Unable to detect column names")
+            raise RuntimeError("Unable to detect available fields")
 
         return Phase1Result(
             FileConnectorHosts(importer.hosts,
