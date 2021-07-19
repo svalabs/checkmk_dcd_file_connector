@@ -157,7 +157,9 @@ class CSVImporter(FileImporter):
             pass
 
 
-class BVQJSONImporter(FileImporter):
+class BVQImporter(FileImporter):
+    "Import hosts from a BVQ file"
+
     FIELD_MAPPING = (
         # Mapping data from CMK to JSON.
         # (CMK, JSON)
@@ -226,7 +228,7 @@ class CSVConnector(Connector):
         if file_format == "csv":
             importer = CSVImporter(self._connection_config.path)
         elif file_format == "bvq":
-            importer = BVQJSONImporter(self._connection_config.path)
+            importer = BVQImporter(self._connection_config.path)
         else:
             raise RuntimeError("Invalid file format {!r}".format(file_format))
 
