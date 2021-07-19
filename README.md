@@ -35,6 +35,12 @@ ABC005,DATU,Darmstadt,SYS
 ABC006,DATU,Darmstadt,NET
 ```
 
+### BVQ file
+
+It is possible to import an BVQ state file by selecting the
+corresponding _Data Format_ during the connection configuration.
+
+
 ## Building
 
 The project creates a new `.mkp` file with every tag.
