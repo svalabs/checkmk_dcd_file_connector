@@ -77,9 +77,10 @@ def get_ip_address(host: dict):
     for field in IP_ATTRIBUTES:
         try:
             ip = host[field].split(',')[0]  # use only first IP
-            return ip.strip()
         except KeyError:
             continue
+
+        return ip.strip()
 
 
 def get_host_tags(attributes: dict) -> dict:
