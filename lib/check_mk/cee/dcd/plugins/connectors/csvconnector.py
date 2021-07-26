@@ -484,7 +484,7 @@ class CSVConnector(Connector):
             return tags
 
         def ip_needs_modification(old_ip, new_ip):
-            return old_ip == new_ip
+            return old_ip != new_ip
 
         tag_matcher = TagMatcher(cmk_tags)
         folder_path = self._connection_config.folder
