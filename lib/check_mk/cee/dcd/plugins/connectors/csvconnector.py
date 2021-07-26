@@ -723,25 +723,6 @@ class TagMatcher:
         self._original = d
         self._normalized_names = {key.lower(): key for key in d}
 
-    def __contains__(self, k):
-        if k in self._original:
-            return True
-
-        return k.lower() in self._normalized_names
-
-    def __len__(self):
-        return len(self._original)
-
-    def __iter__(self):
-        return iter(self._original)
-
-    def __getitem__(self, k):
-        try:
-            return self._original[k]
-        except KeyError:
-            key = self._normalized_names[k.lower()]
-            return self._original[key]
-
     def get_tag(self, name):
         # type: (str) -> str
         """
