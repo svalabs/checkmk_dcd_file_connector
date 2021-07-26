@@ -46,14 +46,13 @@ def normalize_hostname(hostname: str) -> str:
     return hostname.lower().replace(' ', '_')
 
 
-def get_host_label(host: dict, hostname_field: str):
+def get_host_label(host: dict, hostname_field: str) -> dict:
     """
     Get the labels from a host.
 
     Labels are either prefixed with "_label" or are not any of the
     known values for IPs.
     """
-    # type: (Dict, str) -> Dict
     def unlabelify(value):
         if value.startswith('label_'):
             return value[6:]
@@ -83,8 +82,7 @@ def get_ip_address(host: dict):
             continue
 
 
-def get_host_tags(attributes):
-    # type: (Dict) -> Dict
+def get_host_tags(attributes: dict) -> dict:
     return {attr: value for attr, value in attributes.items()
             if is_tag(attr)}
 
@@ -128,8 +126,7 @@ class CSVConnectorConfig(ConnectorConfig):
         # type: () -> str
         return "csvconnector"
 
-    def _connector_attributes_to_config(self):
-        # type: () -> Dict
+    def _connector_attributes_to_config(self) -> dict:
         return {
             "interval": self.interval,
             "path": self.path,
@@ -141,8 +138,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "use_service_discovery": self.use_service_discovery,
         }
 
-    def _connector_attributes_from_config(self, connector_cfg):
-        # type: (Dict) -> None
+    def _connector_attributes_from_config(self, connector_cfg: dict):
         self.interval = connector_cfg["interval"]  # type: int
         self.path = connector_cfg["path"]  # type: str
         self.file_format = connector_cfg.get("file_format", "csv")  # type: str
