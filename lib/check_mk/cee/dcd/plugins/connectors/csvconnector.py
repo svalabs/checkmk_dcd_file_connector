@@ -77,12 +77,7 @@ def get_ip_address(host: dict):
 
     for field in IP_ATTRIBUTES:
         try:
-            value = host[field]
-            try:
-                ip = value.split(',')[0]  # use only first IP
-            except ValueError:
-                ip = value
-
+            ip = host[field].split(',')[0]  # use only first IP
             return ip.strip()
         except KeyError:
             continue
