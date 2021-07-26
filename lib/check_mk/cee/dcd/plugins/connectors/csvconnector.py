@@ -207,14 +207,10 @@ class JSONImporter(FileImporter):
 
         self.fields = fields
 
-        for possible_hostname in self.EXPECTED_HOST_NAMES:
-            if possible_hostname in self.fields:
-                self.hostname_field = possible_hostname
-                break
-
-        if self.hostname_field is None:
-            for possible_field in IP_ATTRIBUTES:
-                self.hostname_field = possible_field
+        possible_hostname_fields = self.EXPECTED_HOST_NAMES + list(IP_ATTRIBUTES)
+        for field in possible_hostname_fields:
+            if field in self.fields:
+                self.hostname_field = field
                 break
 
 
