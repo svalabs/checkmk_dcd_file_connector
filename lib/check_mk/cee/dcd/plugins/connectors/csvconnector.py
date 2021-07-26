@@ -41,8 +41,8 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 
 
-def normalize_hostname(hostname):
-    # type: (str) -> str
+def normalize_hostname(hostname: str) -> str:
+    "Generate a normalized hostname form"
     return hostname.lower().replace(' ', '_')
 
 
