@@ -58,7 +58,7 @@ class CSVConnectorParameters(ConnectorParameters):
     def valuespec(self):
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
         bvq_value = FixedValue(value="bvq", title="BVQ", totext="Export from a BVQ system.")
-        # json_value = FixedValue("JSON", value="json", totext="File with JSON format.")
+        json_value = FixedValue(value="json", title="JSON", totext="File with JSON format.")
 
         return Dictionary(
             elements=[
@@ -121,7 +121,7 @@ class CSVConnectorParameters(ConnectorParameters):
                 )),
                 ("file_format", Alternative(
                     title=_("Data Format"),
-                    elements=[csv_value, bvq_value],
+                    elements=[csv_value, json_value, bvq_value],
                     default_value=csv_value,
                     help=_(
                         "Select the data format for the file."

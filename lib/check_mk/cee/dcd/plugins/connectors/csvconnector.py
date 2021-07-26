@@ -189,6 +189,35 @@ class CSVImporter(FileImporter):
             pass
 
 
+class JSONImporter(FileImporter):
+    "Import hosts from a file with JSON"
+
+    EXPECTED_HOST_NAMES = [
+        "name",
+        "hostname",
+    ]
+
+    def import_hosts(self):
+        with open(self.filepath) as export_file:
+            self.hosts = json.load(export_file)
+
+        fields = set()
+        for host in self.hosts:
+            fields.update(host.keys())
+
+        self.fields = fields
+
+        for possible_hostname in self.EXPECTED_HOST_NAMES:
+            if possible_hostname in self.fields:
+                self.hostname_field = possible_hostname
+                break
+
+        if self.hostname_field is None:
+            for possible_field in IP_ATTRIBUTES:
+                self.hostname_field = possible_field
+                break
+
+
 class BVQImporter(FileImporter):
     "Import hosts from a BVQ file"
 
@@ -261,6 +290,8 @@ class CSVConnector(Connector):
             importer = CSVImporter(self._connection_config.path)
         elif file_format == "bvq":
             importer = BVQImporter(self._connection_config.path)
+        elif file_format == "json":
+            importer = JSONImporter(self._connection_config.path)
         else:
             raise RuntimeError("Invalid file format {!r}".format(file_format))
 
