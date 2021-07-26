@@ -301,6 +301,13 @@ class CSVConnector(Connector):
             )
             raise RuntimeError("Unable to detect available fields")
 
+        if not importer.hostname_field:
+            self._logger.error(
+                "Unable to detect hostname field from %r!",
+                self._connection_config.path,
+            )
+            raise RuntimeError("Unable to detect hostname field")
+
         return Phase1Result(
             FileConnectorHosts(importer.hosts,
                                importer.hostname_field,
