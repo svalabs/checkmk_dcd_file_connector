@@ -2,6 +2,7 @@ stages:
   - test
   - qa
   - package
+  - release
 
 
 pylint:
@@ -52,7 +53,29 @@ create mkp:
     - tar -cv -C web/ -f web.tar plugins/wato/
     # Packing the final archive
     - tar -czvf csvconnector-${CI_COMMIT_REF_NAME}.mkp info info.json lib.tar web.tar
+    # Save CI_JOB_ID for reference during release
+    - echo "${CI_JOB_ID}" > CI_JOB_ID.txt
   artifacts:
     name: csvconnector-${CI_COMMIT_SHORT_SHA}
     paths:
       - csvconnector-${CI_COMMIT_REF_NAME}.mkp
+      - CI_JOB_ID.txt
+
+create release:
+  stage: release
+  variables:
+    ADDITIONAL_CA_CERT_BUNDLE: /etc/gitlab-runner/certs/ca.crt
+  script:
+    - release-cli create --name "Release $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG \
+        --assets-link "{\"name\":\"MKP\",\"url\":\"https://codehub.sva.de/ops_mon/dev/check_mk-csv-connector/-/jobs/`cat CI_JOB_ID.txt`/artifacts/file/csvconnector-v2.4.0.mkp\"}"
+  # release:
+  #   tag_name: $CI_COMMIT_TAG
+  #   description: Release $CI_COMMIT_TAG
+  #   assets:
+  #     links:
+  #       - name: 'MKP file'
+  #         url: 'https://codehub.sva.de/ops_mon/dev/check_mk-csv-connector/-/jobs/454827/artifacts/file/csvconnector-v2.4.0.mkp'
+  #         filepath: '/mkp'  # nice download URL
+  #         link_type: 'other'
+  rules:
+    - if: $CI_COMMIT_TAG
