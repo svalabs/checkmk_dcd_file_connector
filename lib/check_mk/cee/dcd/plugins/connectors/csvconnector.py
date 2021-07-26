@@ -83,7 +83,7 @@ def get_ip_address(host: dict):
             except ValueError:
                 ip = value
 
-            return ip
+            return ip.strip()
         except KeyError:
             continue
 
