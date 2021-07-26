@@ -68,11 +68,22 @@ def get_host_label(host: dict, hostname_field: str):
 
 
 def get_ip_address(host: dict):
-    "Tries to get an IP address for a host. If not found returns `None`."
+    """
+    Tries to get an IP address for a host. If not found returns `None`.
+
+    If multiple IPs are given and separated through a comma only the
+    first IP address will be used.
+    """
 
     for field in IP_ATTRIBUTES:
         try:
-            return host[field]
+            value = host[field]
+            try:
+                ip = value.split(',')[0]  # use only first IP
+            except ValueError:
+                ip = value
+
+            return ip
         except KeyError:
             continue
 
