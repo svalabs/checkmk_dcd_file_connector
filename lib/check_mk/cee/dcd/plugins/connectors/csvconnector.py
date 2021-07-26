@@ -754,8 +754,8 @@ class TagMatcher:
 
         try:
             return self._normalized_names[name.lower()]
-        except KeyError:
-            raise ValueError("No matching tag for {!r} found!".format(name))
+        except KeyError as kerr:
+            raise ValueError(f"No matching tag for {name!r} found!") from kerr
 
     def is_possible_value(self, tag, value, raise_error=False):
         tag = self.get_tag(tag)
