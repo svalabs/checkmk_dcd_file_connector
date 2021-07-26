@@ -248,9 +248,10 @@ class BVQImporter(FileImporter):
         self.fields = fields
 
     def format_host(self, host):
-        # TODO: figure out how to handle these:
-        #     "masterGroupingObjectIpv4": "10.10.101.43",  -> tag "parent" in host_properties -> fragen wir bei BVQ an
-        #     "masterGroupingObjectIpv6": ""
+        # BVQ sends more fields than we handle.
+        # We currently exclude:
+        #  - masterGroupingObjectIpv4
+        #  - masterGroupingObjectIpv6
 
         new_host = {"name": host["name"]}
 
