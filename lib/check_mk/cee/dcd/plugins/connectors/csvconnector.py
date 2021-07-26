@@ -139,7 +139,7 @@ class CSVConnectorConfig(ConnectorConfig):
         # type: (Dict) -> None
         self.interval = connector_cfg["interval"]  # type: int
         self.path = connector_cfg["path"]  # type: str
-        self.file_format = connector_cfg["file_format"]  # type: str
+        self.file_format = connector_cfg.get("file_format", "csv")  # type: str
         self.folder = connector_cfg["folder"]  # type: str
         self.host_filters = connector_cfg.get("host_filters", [])  # type: list
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
