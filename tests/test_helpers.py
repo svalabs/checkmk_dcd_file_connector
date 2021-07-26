@@ -83,3 +83,15 @@ def test_getting_host_tags(host, expected_tags):
 ])
 def test_create_hostlike_tags(tags_from_api, expected_tags):
     assert expected_tags == csvconnector.create_hostlike_tags(tags_from_api)
+
+
+@pytest.mark.parametrize("host, expected_ip", [
+    ({}, None),  # No IP given
+    ({"name": "vigilant"}, None),  # No IP given
+    ({"name": "vigilant", "ip": "1.2.3.4"}, "1.2.3.4"),
+    ({"name": "vigilant", "ipv4": "1.2.3.4"}, "1.2.3.4"),
+    ({"name": "vigilant", "ipaddress": "1.2.3.4"}, "1.2.3.4"),
+    ({"name": "vigilant", "ip": "1.2.3.4 , 5.6.7.8"}, "1.2.3.4"),
+])
+def test_get_ip_address(host, expected_ip):
+    assert expected_ip == csvconnector.get_ip_address(host)
