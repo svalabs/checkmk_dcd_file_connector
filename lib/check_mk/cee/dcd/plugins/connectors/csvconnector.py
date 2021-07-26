@@ -15,8 +15,10 @@
 #                     for SVA System Vertrieb Alexander GmbH
 
 import csv
+import json
 import re
 import time
+from abc import abstractmethod
 from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
@@ -36,14 +38,21 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
     NullObject,
 )
 
+IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 
-def normalize_hostname(hostname):
-    # type: (str) -> str
+
+def normalize_hostname(hostname: str) -> str:
+    "Generate a normalized hostname form"
     return hostname.lower().replace(' ', '_')
 
 
-def get_host_label(host, hostname_field):
-    # type: (Dict, str) -> Dict
+def get_host_label(host: dict, hostname_field: str) -> dict:
+    """
+    Get the labels from a host.
+
+    Labels are either prefixed with "_label" or are not any of the
+    known values for IPs.
+    """
     def unlabelify(value):
         if value.startswith('label_'):
             return value[6:]
@@ -54,11 +63,27 @@ def get_host_label(host, hostname_field):
            if key != hostname_field}
 
     return {unlabelify(key): value for key, value in tmp.items()
-            if not is_tag(key)}
+            if not (is_tag(key) or key in IP_ATTRIBUTES)}
 
 
-def get_host_tags(attributes):
-    # type: (Dict) -> Dict
+def get_ip_address(host: dict):
+    """
+    Tries to get an IP address for a host. If not found returns `None`.
+
+    If multiple IPs are given and separated through a comma only the
+    first IP address will be used.
+    """
+
+    for field in IP_ATTRIBUTES:
+        try:
+            ip_address = host[field].split(',')[0]  # use only first IP
+        except KeyError:
+            continue
+
+        return ip_address.strip()
+
+
+def get_host_tags(attributes: dict) -> dict:
     return {attr: value for attr, value in attributes.items()
             if is_tag(attr)}
 
@@ -102,11 +127,11 @@ class CSVConnectorConfig(ConnectorConfig):
         # type: () -> str
         return "csvconnector"
 
-    def _connector_attributes_to_config(self):
-        # type: () -> Dict
+    def _connector_attributes_to_config(self) -> dict:
         return {
             "interval": self.interval,
             "path": self.path,
+            "file_format": self.file_format,
             "folder": self.folder,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
@@ -114,15 +139,121 @@ class CSVConnectorConfig(ConnectorConfig):
             "use_service_discovery": self.use_service_discovery,
         }
 
-    def _connector_attributes_from_config(self, connector_cfg):
-        # type: (Dict) -> None
+    def _connector_attributes_from_config(self, connector_cfg: dict):
         self.interval = connector_cfg["interval"]  # type: int
         self.path = connector_cfg["path"]  # type: str
+        self.file_format = connector_cfg.get("file_format", "csv")  # type: str
         self.folder = connector_cfg["folder"]  # type: str
         self.host_filters = connector_cfg.get("host_filters", [])  # type: list
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
         self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
         self.use_service_discovery = connector_cfg["use_service_discovery"]  # type: bool
+
+
+class FileImporter:
+    "Basic file importer"
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.hosts = None
+        self.fields = None
+        self.hostname_field = None
+
+    @abstractmethod
+    def import_hosts(self):
+        "This function will be called for importing the hosts."
+
+
+class CSVImporter(FileImporter):
+    "Import hosts from a CSV file"
+
+    def import_hosts(self):
+        with open(self.filepath) as cmdb_export:
+            reader = csv.DictReader(cmdb_export)
+            self.hosts = list(reader)
+            self.fields = reader.fieldnames
+
+        try:
+            # We always assume that the first column in our CSV is the hostname
+            self.hostname_field = self.fields[0]
+        except IndexError:
+            # Handling the error will be done in the calling method
+            pass
+
+
+class JSONImporter(FileImporter):
+    "Import hosts from a file with JSON"
+
+    EXPECTED_HOST_NAMES = [
+        "name",
+        "hostname",
+    ]
+
+    def import_hosts(self):
+        with open(self.filepath) as export_file:
+            self.hosts = json.load(export_file)
+
+        fields = set()
+        for host in self.hosts:
+            fields.update(host.keys())
+
+        self.fields = fields
+
+        possible_hostname_fields = self.EXPECTED_HOST_NAMES + list(IP_ATTRIBUTES)
+        for field in possible_hostname_fields:
+            if field in self.fields:
+                self.hostname_field = field
+                break
+
+
+class BVQImporter(FileImporter):
+    "Import hosts from a BVQ file"
+
+    FIELD_MAPPING = (
+        # Mapping data from CMK to JSON.
+        # (CMK, JSON)
+        ("label_bvq_type", "tag"),
+        ("ipv4", "ipv4"),
+        ("ipv6", "ipv6"),
+    )
+
+    def __init__(self, filepath):
+        super().__init__(filepath)
+
+        # We know that this is our field
+        self.hostname_field = "name"
+
+    def import_hosts(self):
+        with open(self.filepath) as export_file:
+            hosts = json.load(export_file)
+
+        self.hosts = [
+            self.format_host(element["hostAddress"])
+            for element in hosts
+            if "hostAddress" in element
+        ]
+
+        fields = set()
+        for host in self.hosts:
+            fields.update(host.keys())
+
+        self.fields = fields
+
+    def format_host(self, host):
+        # BVQ sends more fields than we handle.
+        # We currently exclude:
+        #  - masterGroupingObjectIpv4
+        #  - masterGroupingObjectIpv6
+
+        new_host = {"name": host["name"]}
+
+        for host_key, json_key in self.FIELD_MAPPING:
+            try:
+                new_host[host_key] = host[json_key]
+            except KeyError:
+                continue
+
+        return new_host
 
 
 @connector_registry.register
@@ -142,20 +273,40 @@ class CSVConnector(Connector):
         # type: () -> Phase1Result
         """Execute the first synchronization phase"""
         self._logger.info("Execute phase 1")
-        with open(self._connection_config.path) as cmdb_export:
-            reader = csv.DictReader(cmdb_export)
-            cmdb_hosts = list(reader)
-            fields = reader.fieldnames
 
-        if not fields:
+        file_format = self._connection_config.file_format
+        if file_format == "csv":
+            importer = CSVImporter(self._connection_config.path)
+        elif file_format == "bvq":
+            importer = BVQImporter(self._connection_config.path)
+        elif file_format == "json":
+            importer = JSONImporter(self._connection_config.path)
+        else:
+            raise RuntimeError("Invalid file format {!r}".format(file_format))
+
+        importer.import_hosts()
+        self._logger.info("Found %i hosts in file", len(importer.hosts))
+
+        if not importer.fields:
             self._logger.error(
-                "Unable to read column name from %r. Is the file empty?",
+                "Unable to read fields from %r. Is the file empty?",
                 self._connection_config.path,
             )
-            raise RuntimeError("Unable to detect column names")
+            raise RuntimeError("Unable to detect available fields")
 
-        self._logger.info("Found %i hosts in CSV file", len(cmdb_hosts))
-        return Phase1Result(CSVConnectorHosts(cmdb_hosts, fields), self._status)
+        if not importer.hostname_field:
+            self._logger.error(
+                "Unable to detect hostname field from %r!",
+                self._connection_config.path,
+            )
+            raise RuntimeError("Unable to detect hostname field")
+
+        return Phase1Result(
+            FileConnectorHosts(importer.hosts,
+                               importer.hostname_field,
+                               importer.fields),
+            self._status
+        )
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
@@ -169,15 +320,13 @@ class CSVConnector(Connector):
             if isinstance(phase1_result.connector_object, NullObject):
                 raise ValueError("Remote site has not completed phase 1 yet")
 
-            if not isinstance(phase1_result.connector_object, CSVConnectorHosts):
+            if not isinstance(phase1_result.connector_object, FileConnectorHosts):
                 raise ValueError("Got invalid connector object as phase 1 result: %r" %
                                  phase1_result.connector_object)
 
-            cmdb_hosts = phase1_result.connector_object.cmdb_hosts
-
+            cmdb_hosts = phase1_result.connector_object.hosts
             fieldnames = phase1_result.connector_object.fieldnames
-            # We always assume that the first column in our CSV is the hostname
-            hostname_field = fieldnames[0]
+            hostname_field = phase1_result.connector_object.hostname_field
 
         with self.status.next_step("phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")):
             cmk_hosts = self._web_api.get_all_hosts()
@@ -331,6 +480,9 @@ class CSVConnector(Connector):
 
             return tags
 
+        def ip_needs_modification(old_ip, new_ip):
+            return old_ip != new_ip
+
         tag_matcher = TagMatcher(cmk_tags)
         folder_path = self._connection_config.folder
         hosts_to_create = []
@@ -352,6 +504,10 @@ class CSVConnector(Connector):
                     "locked_by": global_ident,
                 }
 
+                ip_address = get_ip_address(host)
+                if ip_address is not None:
+                    attributes["ipaddress"] = ip_address
+
                 tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
 
@@ -366,14 +522,19 @@ class CSVConnector(Connector):
             host_tags = get_host_tags(host)
             future_tags = create_host_tags(host_tags)
 
+            existing_ip = attributes.get("ipaddress")
+            future_ip = get_ip_address(host)
+
             overtake_host = hostname in hosts_to_overtake
             update_needed = (overtake_host
                              or needs_modification(api_label, future_label)  # noqa: W503
-                             or needs_modification(api_tags, future_tags))  # noqa: W503
+                             or needs_modification(api_tags, future_tags)  # noqa: W503
+                             or ip_needs_modification(existing_ip, future_ip))  # noqa: W503
 
             if update_needed:
                 api_label.update(future_label)
                 attributes["labels"] = api_label
+                attributes["ipaddress"] = future_ip
 
                 attributes.update(future_tags)
 
@@ -562,25 +723,6 @@ class TagMatcher:
         self._original = d
         self._normalized_names = {key.lower(): key for key in d}
 
-    def __contains__(self, k):
-        if k in self._original:
-            return True
-
-        return k.lower() in self._normalized_names
-
-    def __len__(self):
-        return len(self._original)
-
-    def __iter__(self):
-        return iter(self._original)
-
-    def __getitem__(self, k):
-        try:
-            return self._original[k]
-        except KeyError:
-            key = self._normalized_names[k.lower()]
-            return self._original[key]
-
     def get_tag(self, name):
         # type: (str) -> str
         """
@@ -593,8 +735,8 @@ class TagMatcher:
 
         try:
             return self._normalized_names[name.lower()]
-        except KeyError:
-            raise ValueError("No matching tag for {!r} found!".format(name))
+        except KeyError as kerr:
+            raise ValueError(f"No matching tag for {name!r} found!") from kerr
 
     def is_possible_value(self, tag, value, raise_error=False):
         tag = self.get_tag(tag)
@@ -608,18 +750,26 @@ class TagMatcher:
         return match_found
 
 
-class CSVConnectorHosts:
-    def __init__(self, cmdb_hosts, fieldnames):
-        self.cmdb_hosts = cmdb_hosts
+class FileConnectorHosts:
+    def __init__(self, hosts, hostname_field, fieldnames):
+        self.hosts = hosts
+        self.hostname_field = hostname_field
         self.fieldnames = fieldnames
 
     @classmethod
     def from_serialized_attributes(cls, serialized):
-        return cls(serialized["cmdb_hosts"], serialized["fieldnames"])
+        return cls(
+            serialized["hosts"],
+            serialized["hostname_field"],
+            serialized["fieldnames"]
+        )
 
-    def _serialize_attributes(self):
-        # type: () -> Dict
-        return {"cmdb_hosts": self.cmdb_hosts, "fieldnames": self.fieldnames}
+    def _serialize_attributes(self) -> dict:
+        return {
+            "hosts": self.hosts,
+            "hostname_field": self.hostname_field,
+            "fieldnames": self.fieldnames
+        }
 
-    def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.cmdb_hosts, self.fieldnames)
+    def __repr__(self) -> str:
+        return "%s(%r, %r, %r)" % (self.__class__.__name__, self.hosts, self.hostname_field, self.fieldnames)

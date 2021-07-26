@@ -28,9 +28,11 @@ from cmk.gui.plugins.wato import FullPathFolderChoice
 
 from cmk.gui.valuespec import (
     Age,
+    Alternative,
     Checkbox,
     Dictionary,
     Filename,
+    FixedValue,
     Integer,
     ListOfStrings,
     RegExpUnicode,
@@ -54,6 +56,10 @@ class CSVConnectorParameters(ConnectorParameters):
         return _("Connector for importing data from a CSV file.")
 
     def valuespec(self):
+        csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
+        bvq_value = FixedValue(value="bvq", title="BVQ", totext="Export from a BVQ system.")
+        json_value = FixedValue(value="json", title="JSON", totext="File with JSON format.")
+
         return Dictionary(
             elements=[
                 ("interval", Age(
@@ -111,6 +117,14 @@ class CSVConnectorParameters(ConnectorParameters):
                     title=_("Use service discovery"),
                     help=_(
                         "Controls if service discovery is triggered for new hosts."
+                    ),
+                )),
+                ("file_format", Alternative(
+                    title=_("Data Format"),
+                    elements=[csv_value, json_value, bvq_value],
+                    default_value=csv_value,
+                    help=_(
+                        "Select the data format for the file."
                     ),
                 )),
             ],
