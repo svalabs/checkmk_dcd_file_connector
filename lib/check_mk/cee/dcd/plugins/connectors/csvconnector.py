@@ -147,7 +147,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.host_filters = connector_cfg.get("host_filters", [])  # type: list
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
         self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
-        self.use_service_discovery = connector_cfg["use_service_discovery"]  # type: bool
+        self.use_service_discovery = connector_cfg.get("use_service_discovery", True)  # type: bool
 
 
 class FileImporter:
