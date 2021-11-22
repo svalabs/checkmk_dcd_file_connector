@@ -633,6 +633,9 @@ class CSVConnector(Connector):
             self._web_api._api_request('webapi.py?action=add_folder', data)
             created_folders.append(folder)
 
+        # We want our folders to exist before processing the hosts
+        self._activate_changes()
+
         return created_folders
 
     def _create_new_hosts(self, hosts_to_create):
