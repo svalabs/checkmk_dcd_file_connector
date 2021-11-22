@@ -13,23 +13,27 @@
 #
 # Copyright (C) 2021  Niko Wenselowski <niko.wenselowski@sva.de>
 #                     for SVA System Vertrieb Alexander GmbH
+"""
+CSVConnector import logic.
+"""
 
 import csv
 import json
 import re
 import time
 from abc import abstractmethod
+from functools import partial
 from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
-    Dict, List, Tuple,
+    Dict, List, Set, Tuple,
 )
 
-from cmk.utils.i18n import _
+from cmk.utils.i18n import _  # pylint: disable=import-error
 
-from cmk.cee.dcd.web_api import MKAPIError
+from cmk.cee.dcd.web_api import MKAPIError  # pylint: disable=import-error
 
-from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # pylint: disable=unused-import
+from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # pylint: disable=unused-import,import-error
     connector_config_registry,
     ConnectorConfig,
     connector_registry,
@@ -39,6 +43,8 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
 )
 
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
+FOLDER_PLACEHOLDER = "undefined"
+PATH_SEPERATOR = '/'
 
 
 def normalize_hostname(hostname: str) -> str:
@@ -137,6 +143,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
             "use_service_discovery": self.use_service_discovery,
+            "label_path_template": self.label_path_template,
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
@@ -148,6 +155,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
         self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
         self.use_service_discovery = connector_cfg.get("use_service_discovery", True)  # type: bool
+        self.label_path_template = connector_cfg.get("label_path_template", "")
 
 
 class FileImporter:
@@ -358,6 +366,11 @@ class CSVConnector(Connector):
                                                                                       hostname_field,
                                                                                       cmk_tags)
 
+            if self._connection_config.label_path_template:
+                # Creating possibly missing folders if we rely on
+                # labels for the path creation.
+                self._process_folders(hosts_to_create)
+
             self._chunk_size = self._connection_config.chunk_size
             if self._chunk_size:
                 self._logger.info("Processing in chunks of %i", self._chunk_size)
@@ -483,8 +496,25 @@ class CSVConnector(Connector):
         def ip_needs_modification(old_ip, new_ip):
             return old_ip != new_ip
 
+        if self._connection_config.label_path_template:
+            path_labels = self._connection_config.label_path_template.split(PATH_SEPERATOR)
+
+            def get_dynamic_folder_path(labels: dict, keys: List[str], depth: int) -> str:
+                path = generate_path_from_labels(labels, keys, depth)
+                path.insert(0, self._connection_config.folder)
+                return PATH_SEPERATOR.join(path)
+
+            get_folder_path = partial(
+                get_dynamic_folder_path,
+                keys=path_labels,
+                depth=len(path_labels)
+            )
+        else:
+            # Keeping the signature of the more complex function
+            def get_folder_path(_):
+                return self._connection_config.folder
+
         tag_matcher = TagMatcher(cmk_tags)
-        folder_path = self._connection_config.folder
         hosts_to_create = []
         hosts_to_modify = []
         for host in cmdb_hosts:
@@ -497,8 +527,9 @@ class CSVConnector(Connector):
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
             except KeyError:
+                labels = get_host_label(host, hostname_field)
                 attributes = {
-                    "labels": get_host_label(host, hostname_field),
+                    "labels": labels,
                     # Lock the host in order to be able to detect hosts
                     # that have been created through this plugin.
                     "locked_by": global_ident,
@@ -510,6 +541,8 @@ class CSVConnector(Connector):
 
                 tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
+
+                folder_path = get_folder_path(labels)
 
                 hosts_to_create.append((hostname, folder_path, attributes))
                 continue
@@ -565,6 +598,54 @@ class CSVConnector(Connector):
         )
 
         return hosts_to_create, hosts_to_modify, hosts_to_delete
+
+    def _process_folders(self, hosts: List):
+        # Folders are represented as a string.
+        # Paths are written Unix style: 'folder/subfolder'
+        host_folders = self._get_folders(hosts)
+        existing_folders = self._get_existing_folders()
+
+        folders_to_create = host_folders - existing_folders
+        self._logger.debug("Creating the following folders: %s", folders_to_create)
+        self._create_folders(sorted(folders_to_create))
+
+    def _get_existing_folders(self) -> Set:
+        all_folders = self._web_api._api_request('webapi.py?action=get_all_folders', {})
+
+        return set(all_folders)
+
+    def _get_folders(self, hosts: List) -> Set:
+        "Get the folders from the hosts to create."
+        folders = {
+            folder_path
+            for (_, folder_path, _) in hosts
+        }
+        self._logger.debug("Found the following folders: %s", folders)
+
+        return folders
+
+    def _create_folders(self, folders: List) -> List:
+        if not folders:
+            self._logger.debug("No folders to create.")
+            return
+
+        self._logger.debug("Creating the following folders: %s", folders)
+
+        created_folders = []
+        for folder in folders:
+            self._logger.info("Creating folder: %s", folder)
+
+            # Follow the required format for the request.
+            folder_data = {"folder": folder, "attributes": {}}
+            data = {"request": json.dumps(folder_data)}
+
+            self._web_api._api_request('webapi.py?action=add_folder', data)
+            created_folders.append(folder)
+
+        # We want our folders to exist before processing the hosts
+        self._activate_changes()
+
+        return created_folders
 
     def _create_new_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
@@ -748,6 +829,26 @@ class TagMatcher:
                              "Valid tags are: {}".format(value, tag, ', '.join(values)))
 
         return match_found
+
+
+def generate_path_from_labels(
+    labels: dict, keys: List[str], depth: int = 0
+) -> List:
+    if not labels:
+        if not depth:
+            depth = 0
+
+        return [FOLDER_PLACEHOLDER] * depth
+
+    # A host might have the label set without a value.
+    # In this case we want to use the placeholder.
+    path = [
+        labels.get(key) or FOLDER_PLACEHOLDER
+        for key
+        in keys
+    ]
+
+    return path
 
 
 class FileConnectorHosts:
