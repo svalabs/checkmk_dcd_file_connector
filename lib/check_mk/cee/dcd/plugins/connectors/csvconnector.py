@@ -684,7 +684,7 @@ class CSVConnector(Connector):
         result = self._web_api.add_hosts(hosts_to_create)
 
         for hostname, message in sorted(result["failed_hosts"].items()):
-            self._logger.error("Creation of \"%s\" failed: %s" % (hostname, message))
+            self._logger.error("Creation of \"%s\" failed: %s", hostname, message)
 
         return result["succeeded_hosts"]
 
