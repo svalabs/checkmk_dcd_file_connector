@@ -575,7 +575,7 @@ class CSVConnector(Connector):
         existing_folders = self._get_existing_folders()
 
         folders_to_create = host_folders - existing_folders
-        self._logger.info("Creating the following folders: %s", folders_to_create)
+        self._logger.debug("Creating the following folders: %s", folders_to_create)
         self._create_folders(sorted(folders_to_create))
 
     def _get_existing_folders(self) -> Set:
@@ -589,7 +589,7 @@ class CSVConnector(Connector):
             folder_path
             for (_, folder_path, _) in hosts
         }
-        self._logger.info("Found the following folders: %s", folders)
+        self._logger.debug("Found the following folders: %s", folders)
 
         return folders
 
