@@ -59,7 +59,7 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
     @classmethod
     def description(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
-        return _("Connector for importing data from a CSV file.")
+        return _("Connector for importing data from a CSV, JSON or BVQ file.")
 
     def valuespec(self):  # pylint: disable=missing-function-docstring
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
@@ -74,9 +74,10 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     default_value=300,
                 )),
                 ("path", Filename(
-                    title=_("Path of the CSV file to import."),
-                    help=_("This is the absolute path to the CSV file. "
-                           "The first column of the file is assumed to contain the hostname."),
+                    title=_("Path of the file to import."),
+                    help=_("This is the absolute path to the file. "
+                           "In CSV format the first column of the "
+                           "file is assumed to contain the hostname."),
                     allow_empty=False,
                     validate=self.validate_csv,
                 )),
