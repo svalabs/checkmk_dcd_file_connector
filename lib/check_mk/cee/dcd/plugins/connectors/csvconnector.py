@@ -39,6 +39,7 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
 )
 
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
+FOLDER_PLACEHOLDER = "undefined"
 
 
 def normalize_hostname(hostname: str) -> str:
@@ -485,8 +486,26 @@ class CSVConnector(Connector):
         def ip_needs_modification(old_ip, new_ip):
             return old_ip != new_ip
 
+        def get_folder_path(labels: dict) -> str:
+            def generate_path_from_labels() -> List:
+                if not labels:
+                    level = 3
+                    return [FOLDER_PLACEHOLDER] * level
+
+                # A host might have the label set without a value.
+                # In this case we want to use the placeholder.
+                first = labels.get('standort') or FOLDER_PLACEHOLDER
+                second = labels.get('stadt') or FOLDER_PLACEHOLDER
+                third = labels.get('ident') or FOLDER_PLACEHOLDER
+
+                return [first, second, third]
+
+            path = generate_path_from_labels()
+            path = '/'.join(path)
+            final_path = '/'.join((self._connection_config.folder, path))
+            return final_path
+
         tag_matcher = TagMatcher(cmk_tags)
-        folder_path = self._connection_config.folder
         hosts_to_create = []
         hosts_to_modify = []
         for host in cmdb_hosts:
@@ -499,8 +518,9 @@ class CSVConnector(Connector):
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
             except KeyError:
+                labels = get_host_label(host, hostname_field)
                 attributes = {
-                    "labels": get_host_label(host, hostname_field),
+                    "labels": labels,
                     # Lock the host in order to be able to detect hosts
                     # that have been created through this plugin.
                     "locked_by": global_ident,
@@ -512,6 +532,8 @@ class CSVConnector(Connector):
 
                 tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
+
+                folder_path = get_folder_path(labels)
 
                 hosts_to_create.append((hostname, folder_path, attributes))
                 continue
