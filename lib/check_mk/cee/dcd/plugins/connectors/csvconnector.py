@@ -362,14 +362,14 @@ class CSVConnector(Connector):
                                                                                       hostname_field,
                                                                                       cmk_tags)
 
-            self._chunk_size = self._connection_config.chunk_size
-            if self._chunk_size:
-                self._logger.info("Processing in chunks of %i", self._chunk_size)
-
             if self._connection_config.label_path_template:
                 # Creating possibly missing folders if we rely on
                 # labels for the path creation.
                 self._process_folders(hosts_to_create)
+
+            self._chunk_size = self._connection_config.chunk_size
+            if self._chunk_size:
+                self._logger.info("Processing in chunks of %i", self._chunk_size)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
