@@ -8,9 +8,10 @@ stages:
 pylint:
   stage: qa
   needs: []
-  image: python:3
-  script:
+  image: python:3-slim
+  before_script:
     - pip install pylint
+  script:
     - pylint lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
   allow_failure: true
 
@@ -18,9 +19,10 @@ pylint:
 flake8:
   stage: qa
   needs: []
-  image: python:3
-  script:
+  image: python:3-slim
+  before_script:
     - pip install flake8
+  script:
     - flake8 lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
   allow_failure: true
 
@@ -28,8 +30,9 @@ flake8:
 run tests:
   stage: test
   image: python:3
-  script:
+  before_script:
     - pip install pytest pytest-cov
+  script:
     - pytest tests/
     - coverage xml
   artifacts:
