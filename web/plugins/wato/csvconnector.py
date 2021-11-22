@@ -19,17 +19,17 @@ WATO configuration module for CSVConnector.
 
 import os.path
 
-from cmk.gui.cee.plugins.wato.dcd import (  # noqa: F401 # pylint: disable=unused-import
+from cmk.gui.cee.plugins.wato.dcd import (  # noqa: F401 # pylint: disable=unused-import,import-error
     connector_parameters_registry, ConnectorParameters,
 )
 
-from cmk.gui.exceptions import MKUserError
+from cmk.gui.exceptions import MKUserError  # pylint: disable=import-error
 
-from cmk.gui.i18n import _
+from cmk.gui.i18n import _  # pylint: disable=import-error
 
-from cmk.gui.plugins.wato import FullPathFolderChoice
+from cmk.gui.plugins.wato import FullPathFolderChoice  # pylint: disable=import-error
 
-from cmk.gui.valuespec import (
+from cmk.gui.valuespec import (  # pylint: disable=import-error
     Age,
     Alternative,
     Checkbox,
@@ -44,24 +44,24 @@ from cmk.gui.valuespec import (
 
 
 @connector_parameters_registry.register
-class CSVConnectorParameters(ConnectorParameters):
+class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
 
     @classmethod
-    def name(cls):
+    def name(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
         return "csvconnector"
 
     @classmethod
-    def title(self):
+    def title(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
         return _("CSV import")
 
     @classmethod
-    def description(self):
+    def description(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
         return _("Connector for importing data from a CSV file.")
 
-    def valuespec(self):
+    def valuespec(self):  # pylint: disable=missing-function-docstring
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
         bvq_value = FixedValue(value="bvq", title="BVQ", totext="Export from a BVQ system.")
         json_value = FixedValue(value="json", title="JSON", totext="File with JSON format.")
@@ -159,12 +159,12 @@ class CSVConnectorParameters(ConnectorParameters):
         )
 
     @staticmethod
-    def validate_csv(filename, varprefix):
+    def validate_csv(filename, varprefix):  # pylint: disable=missing-function-docstring
         if not os.path.isfile(filename):
             raise MKUserError(varprefix, f"No file {filename}")
 
     @staticmethod
-    def validate_label_path_template(template, varprefix):
+    def validate_label_path_template(template, varprefix):  # pylint: disable=missing-function-docstring
         if not template.islower():
             raise MKUserError(varprefix, "Please supply only lowercase variables!")
 
