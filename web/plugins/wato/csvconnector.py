@@ -161,7 +161,7 @@ class CSVConnectorParameters(ConnectorParameters):
     @staticmethod
     def validate_csv(filename, varprefix):
         if not os.path.isfile(filename):
-            raise MKUserError(varprefix, "No file %r" % filename)
+            raise MKUserError(varprefix, f"No file {filename}")
 
     @staticmethod
     def validate_label_path_template(template, varprefix):
