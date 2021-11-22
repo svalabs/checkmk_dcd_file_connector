@@ -22,7 +22,7 @@ from abc import abstractmethod
 from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
-    Dict, List, Tuple,
+    Dict, List, Set, Tuple,
 )
 
 from cmk.utils.i18n import _
@@ -362,6 +362,8 @@ class CSVConnector(Connector):
             if self._chunk_size:
                 self._logger.info("Processing in chunks of %i", self._chunk_size)
 
+            self._process_folders(hosts_to_create)
+
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
             deleted_host_names = self._delete_hosts(hosts_to_delete)
@@ -565,6 +567,51 @@ class CSVConnector(Connector):
         )
 
         return hosts_to_create, hosts_to_modify, hosts_to_delete
+
+    def _process_folders(self, hosts: List):
+        # Folders are represented as a string.
+        # Paths are written Unix style: 'folder/subfolder'
+        host_folders = self._get_folders(hosts)
+        existing_folders = self._get_existing_folders()
+
+        folders_to_create = host_folders - existing_folders
+        self._logger.info("Creating the following folders: %s", folders_to_create)
+        self._create_folders(sorted(folders_to_create))
+
+    def _get_existing_folders(self) -> Set:
+        all_folders = self._web_api._api_request('webapi.py?action=get_all_folders', {})
+
+        return set(all_folders)
+
+    def _get_folders(self, hosts: List) -> Set:
+        "Get the folders from the hosts to create."
+        folders = {
+            folder_path
+            for (_, folder_path, _) in hosts
+        }
+        self._logger.info("Found the following folders: %s", folders)
+
+        return folders
+
+    def _create_folders(self, folders: List) -> List:
+        if not folders:
+            self._logger.debug("No folders to create.")
+            return
+
+        self._logger.debug("Creating the following folders: %s", folders)
+
+        created_folders = []
+        for folder in folders:
+            self._logger.info("Creating folder: %s", folder)
+
+            # Follow the required format for the request.
+            folder_data = {"folder": folder, "attributes": {}}
+            data = {"request": json.dumps(folder_data)}
+
+            self._web_api._api_request('webapi.py?action=add_folder', data)
+            created_folders.append(folder)
+
+        return created_folders
 
     def _create_new_hosts(self, hosts_to_create):
         # type: (List) -> List[str]
