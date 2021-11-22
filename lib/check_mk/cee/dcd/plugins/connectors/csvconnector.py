@@ -627,7 +627,7 @@ class CSVConnector(Connector):
     def _create_folders(self, folders: List) -> List:
         if not folders:
             self._logger.debug("No folders to create.")
-            return
+            return []
 
         self._logger.debug("Creating the following folders: %s", folders)
 
