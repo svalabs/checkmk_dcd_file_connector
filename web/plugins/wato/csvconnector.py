@@ -36,6 +36,7 @@ from cmk.gui.valuespec import (
     Integer,
     ListOfStrings,
     RegExpUnicode,
+    TextInput,
 )
 
 
