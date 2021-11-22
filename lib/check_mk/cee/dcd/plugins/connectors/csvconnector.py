@@ -524,7 +524,8 @@ class CSVConnector(Connector):
             )
         else:
             # Keeping the signature of the more complex function
-            get_folder_path = lambda unused: self._connection_config.folder
+            def get_folder_path(_):
+                return self._connection_config.folder
 
         tag_matcher = TagMatcher(cmk_tags)
         hosts_to_create = []
