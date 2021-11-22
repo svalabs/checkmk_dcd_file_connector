@@ -13,6 +13,9 @@
 #
 # Copyright (C) 2021  Niko Wenselowski <niko.wenselowski@sva.de>
 #                     for SVA System Vertrieb Alexander GmbH
+"""
+CSVConnector import logic.
+"""
 
 import csv
 import json
