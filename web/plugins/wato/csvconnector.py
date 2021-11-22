@@ -171,5 +171,8 @@ class CSVConnectorParameters(ConnectorParameters):
         if template.endswith('/'):
             raise MKUserError(varprefix, "Do not specify a slash as last element!")
 
+        if '' in [folder.strip() for folder in template.split('/')]:
+            raise MKUserError(varprefix, "Do not use empty values!")
+
         if '' in template.split('/'):
             raise MKUserError(varprefix, "Do not use double slashes!")
