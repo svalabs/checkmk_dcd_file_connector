@@ -29,11 +29,11 @@ from typing import (  # pylint: disable=unused-import
     Dict, List, Set, Tuple,
 )
 
-from cmk.utils.i18n import _
+from cmk.utils.i18n import _  # pylint: disable=import-error
 
-from cmk.cee.dcd.web_api import MKAPIError
+from cmk.cee.dcd.web_api import MKAPIError  # pylint: disable=import-error
 
-from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # pylint: disable=unused-import
+from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # pylint: disable=unused-import,import-error
     connector_config_registry,
     ConnectorConfig,
     connector_registry,
@@ -498,7 +498,9 @@ class CSVConnector(Connector):
         if self._connection_config.label_path_template:
             path_labels = self._connection_config.label_path_template.split('/')
 
-            def generate_path_from_labels(labels: dict, keys: List[str], depth: int=0) -> List:
+            def generate_path_from_labels(
+                labels: dict, keys: List[str], depth: int = 0
+            ) -> List:
                 if not labels:
                     if not depth:
                         depth = 0
