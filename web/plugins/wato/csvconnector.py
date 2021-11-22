@@ -51,10 +51,12 @@ class CSVConnectorParameters(ConnectorParameters):
         # type: () -> str
         return "csvconnector"
 
+    @classmethod
     def title(self):
         # type: () -> str
         return _("CSV import")
 
+    @classmethod
     def description(self):
         # type: () -> str
         return _("Connector for importing data from a CSV file.")
