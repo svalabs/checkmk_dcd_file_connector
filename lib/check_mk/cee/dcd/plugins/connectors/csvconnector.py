@@ -44,6 +44,7 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
 
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 FOLDER_PLACEHOLDER = "undefined"
+PATH_SEPERATOR = '/'
 
 
 def normalize_hostname(hostname: str) -> str:
@@ -496,7 +497,7 @@ class CSVConnector(Connector):
             return old_ip != new_ip
 
         if self._connection_config.label_path_template:
-            path_labels = self._connection_config.label_path_template.split('/')
+            path_labels = self._connection_config.label_path_template.split(PATH_SEPERATOR)
 
             def generate_path_from_labels(
                 labels: dict, keys: List[str], depth: int = 0
@@ -520,7 +521,7 @@ class CSVConnector(Connector):
             def get_dynamic_folder_path(labels: dict, keys: List[str], depth: int) -> str:
                 path = generate_path_from_labels(labels, keys, depth)
                 path.insert(0, self._connection_config.folder)
-                return '/'.join(path)
+                return PATH_SEPERATOR.join(path)
 
             get_folder_path = partial(
                 get_dynamic_folder_path,
