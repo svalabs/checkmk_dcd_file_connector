@@ -499,25 +499,6 @@ class CSVConnector(Connector):
         if self._connection_config.label_path_template:
             path_labels = self._connection_config.label_path_template.split(PATH_SEPERATOR)
 
-            def generate_path_from_labels(
-                labels: dict, keys: List[str], depth: int = 0
-            ) -> List:
-                if not labels:
-                    if not depth:
-                        depth = 0
-
-                    return [FOLDER_PLACEHOLDER] * depth
-
-                # A host might have the label set without a value.
-                # In this case we want to use the placeholder.
-                path = [
-                    labels.get(key) or FOLDER_PLACEHOLDER
-                    for key
-                    in keys
-                ]
-
-                return path
-
             def get_dynamic_folder_path(labels: dict, keys: List[str], depth: int) -> str:
                 path = generate_path_from_labels(labels, keys, depth)
                 path.insert(0, self._connection_config.folder)
@@ -848,6 +829,26 @@ class TagMatcher:
                              "Valid tags are: {}".format(value, tag, ', '.join(values)))
 
         return match_found
+
+
+def generate_path_from_labels(
+    labels: dict, keys: List[str], depth: int = 0
+) -> List:
+    if not labels:
+        if not depth:
+            depth = 0
+
+        return [FOLDER_PLACEHOLDER] * depth
+
+    # A host might have the label set without a value.
+    # In this case we want to use the placeholder.
+    path = [
+        labels.get(key) or FOLDER_PLACEHOLDER
+        for key
+        in keys
+    ]
+
+    return path
 
 
 class FileConnectorHosts:
