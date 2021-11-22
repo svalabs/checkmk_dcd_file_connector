@@ -88,4 +88,4 @@ create release:
         - name: '${MKP_FILENAME}'
           url: '${ARTIFACT_JOB_URL}'
           filepath: '/${MKP_FILENAME}'  # nice download URL
-          link_type: 'other'
+          link_type: 'package'
