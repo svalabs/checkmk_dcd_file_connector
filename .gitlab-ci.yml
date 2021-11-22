@@ -2,14 +2,20 @@ stages:
   - test
   - qa
   - package
+  - release
+
+
+variables:
+  MKP_FILENAME: 'csvconnector-${CI_COMMIT_REF_NAME}.mkp'
 
 
 pylint:
   stage: qa
   needs: []
-  image: python:3
-  script:
+  image: python:3-slim
+  before_script:
     - pip install pylint
+  script:
     - pylint lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
   allow_failure: true
 
@@ -17,9 +23,10 @@ pylint:
 flake8:
   stage: qa
   needs: []
-  image: python:3
-  script:
+  image: python:3-slim
+  before_script:
     - pip install flake8
+  script:
     - flake8 lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
   allow_failure: true
 
@@ -27,8 +34,9 @@ flake8:
 run tests:
   stage: test
   image: python:3
-  script:
+  before_script:
     - pip install pytest pytest-cov
+  script:
     - pytest tests/
     - coverage xml
   artifacts:
@@ -38,8 +46,9 @@ run tests:
 
 create mkp:
   stage: package
-  needs: ["run tests"]
-  image: centos:7
+  needs:
+    - run tests
+  image: python:3-slim
   only:
     - tags
     - api
@@ -51,8 +60,32 @@ create mkp:
     - tar -cv -C lib/ -f lib.tar check_mk/
     - tar -cv -C web/ -f web.tar plugins/wato/
     # Packing the final archive
-    - tar -czvf csvconnector-${CI_COMMIT_REF_NAME}.mkp info info.json lib.tar web.tar
+    - tar -czvf ${MKP_FILENAME} info info.json lib.tar web.tar
+    # Save address for reference during release
+    - echo "ARTIFACT_JOB_URL=${CI_JOB_URL}/artifacts/raw/${MKP_FILENAME}?inline=false" >> variables.env
   artifacts:
-    name: csvconnector-${CI_COMMIT_SHORT_SHA}
     paths:
-      - csvconnector-${CI_COMMIT_REF_NAME}.mkp
+      - ${MKP_FILENAME}
+    reports:
+      dotenv: variables.env
+
+
+create release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: create mkp
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo 'Creating release for $CI_COMMIT_TAG'
+  release:
+    tag_name: '$CI_COMMIT_TAG'
+    description: 'Automatically created through release-cli'
+    assets:
+      links:
+        - name: '${MKP_FILENAME}'
+          url: '${ARTIFACT_JOB_URL}'
+          filepath: '/${MKP_FILENAME}'  # nice download URL
+          link_type: 'package'

@@ -13,20 +13,23 @@
 #
 # Copyright (C) 2021  Niko Wenselowski <niko.wenselowski@sva.de>
 #                     for SVA System Vertrieb Alexander GmbH
+"""
+WATO configuration module for CSVConnector.
+"""
 
 import os.path
 
-from cmk.gui.cee.plugins.wato.dcd import (  # noqa: F401 # pylint: disable=unused-import
+from cmk.gui.cee.plugins.wato.dcd import (  # noqa: F401 # pylint: disable=unused-import,import-error
     connector_parameters_registry, ConnectorParameters,
 )
 
-from cmk.gui.exceptions import MKUserError
+from cmk.gui.exceptions import MKUserError  # pylint: disable=import-error
 
-from cmk.gui.i18n import _
+from cmk.gui.i18n import _  # pylint: disable=import-error
 
-from cmk.gui.plugins.wato import FullPathFolderChoice
+from cmk.gui.plugins.wato import FullPathFolderChoice  # pylint: disable=import-error
 
-from cmk.gui.valuespec import (
+from cmk.gui.valuespec import (  # pylint: disable=import-error
     Age,
     Alternative,
     Checkbox,
@@ -36,26 +39,29 @@ from cmk.gui.valuespec import (
     Integer,
     ListOfStrings,
     RegExpUnicode,
+    TextInput,
 )
 
 
 @connector_parameters_registry.register
-class CSVConnectorParameters(ConnectorParameters):
+class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
 
     @classmethod
-    def name(cls):
+    def name(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
         return "csvconnector"
 
-    def title(self):
+    @classmethod
+    def title(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
         return _("CSV import")
 
-    def description(self):
+    @classmethod
+    def description(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
-        return _("Connector for importing data from a CSV file.")
+        return _("Connector for importing data from a CSV, JSON or BVQ file.")
 
-    def valuespec(self):
+    def valuespec(self):  # pylint: disable=missing-function-docstring
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
         bvq_value = FixedValue(value="bvq", title="BVQ", totext="Export from a BVQ system.")
         json_value = FixedValue(value="json", title="JSON", totext="File with JSON format.")
@@ -68,9 +74,10 @@ class CSVConnectorParameters(ConnectorParameters):
                     default_value=300,
                 )),
                 ("path", Filename(
-                    title=_("Path of the CSV file to import."),
-                    help=_("This is the absolute path to the CSV file. "
-                           "The first column of the file is assumed to contain the hostname."),
+                    title=_("Path of the file to import."),
+                    help=_("This is the absolute path to the file. "
+                           "In CSV format the first column of the "
+                           "file is assumed to contain the hostname."),
                     allow_empty=False,
                     validate=self.validate_csv,
                 )),
@@ -127,11 +134,52 @@ class CSVConnectorParameters(ConnectorParameters):
                         "Select the data format for the file."
                     ),
                 )),
+                ("label_path_template", TextInput(
+                    title=_("Use labels to organize hosts"),
+                    label=_("Path template"),
+                    default_value="location/org",
+                    help=_(
+                        "Controls if the placement of a host in the "
+                        "folder structure is based on the labels of "
+                        "the host. "
+                        "If this is activated the folder selected "
+                        "under 'create hosts in' will act as a prefix "
+                        "for the path. "
+                        "Separate folders through a single forward "
+                        "slash (/). "
+                    ),
+                    validate=self.validate_label_path_template,
+                )),
             ],
-            optional_keys=["host_filters", "host_overtake_filters", "chunk_size"],
+            optional_keys=[
+                "host_filters",
+                "host_overtake_filters",
+                "chunk_size",
+                "label_path_template"
+            ],
         )
 
     @staticmethod
-    def validate_csv(filename, varprefix):
+    def validate_csv(filename, varprefix):  # pylint: disable=missing-function-docstring
         if not os.path.isfile(filename):
-            raise MKUserError(varprefix, "No file %r" % filename)
+            raise MKUserError(varprefix, f"No file {filename}")
+
+    @staticmethod
+    def validate_label_path_template(template, varprefix):  # pylint: disable=missing-function-docstring
+        if not template.islower():
+            raise MKUserError(varprefix, "Please supply only lowercase variables!")
+
+        if template.strip() != template:
+            raise MKUserError(varprefix, "Path template can not start or end with whitespace!")
+
+        if template.startswith('/'):
+            raise MKUserError(varprefix, "Do not start with a slash!")
+
+        if template.endswith('/'):
+            raise MKUserError(varprefix, "Do not specify a slash as last element!")
+
+        if '' in [folder.strip() for folder in template.split('/')]:
+            raise MKUserError(varprefix, "Do not use empty values!")
+
+        if '' in template.split('/'):
+            raise MKUserError(varprefix, "Do not use double slashes!")
