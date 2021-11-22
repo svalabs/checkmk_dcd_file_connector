@@ -3,26 +3,6 @@ from csvconnector import generate_path_from_labels, FOLDER_PLACEHOLDER
 import pytest
 
 
-# def generate_path_from_labels(
-#     labels: dict, keys: List[str], depth: int = 0
-# ) -> List:
-#     if not labels:
-#         if not depth:
-#             depth = 0
-
-#         return [FOLDER_PLACEHOLDER] * depth
-
-#     # A host might have the label set without a value.
-#     # In this case we want to use the placeholder.
-#     path = [
-#         labels.get(key) or FOLDER_PLACEHOLDER
-#         for key
-#         in keys
-#     ]
-
-#     return path
-
-
 @pytest.mark.parametrize(
     "labels, keys, expected_path",
     [
