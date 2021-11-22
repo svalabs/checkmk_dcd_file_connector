@@ -127,8 +127,23 @@ class CSVConnectorParameters(ConnectorParameters):
                         "Select the data format for the file."
                     ),
                 )),
+                ("use_labels_for_path", Checkbox(
+                    default_value=False,
+                    title=_("Use labels for host placement"),
+                    help=_(
+                        "Controls if the placement of a host in the folder "
+                        "structure is based on the labels of the host. "
+                        "If this is activated the host folder will act as a "
+                        "prefix for the path."
+                    ),
+                )),
             ],
-            optional_keys=["host_filters", "host_overtake_filters", "chunk_size"],
+            optional_keys=[
+                "host_filters",
+                "host_overtake_filters",
+                "chunk_size",
+                "use_labels_for_path"
+            ],
         )
 
     @staticmethod

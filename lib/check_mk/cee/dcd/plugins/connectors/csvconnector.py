@@ -138,6 +138,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
             "use_service_discovery": self.use_service_discovery,
+            "use_labels_for_path": self.use_labels_for_path,
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
@@ -149,6 +150,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
         self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
         self.use_service_discovery = connector_cfg.get("use_service_discovery", True)  # type: bool
+        self.use_labels_for_path = connector_cfg.get("use_labels_for_path", False)
 
 
 class FileImporter:
@@ -363,7 +365,10 @@ class CSVConnector(Connector):
             if self._chunk_size:
                 self._logger.info("Processing in chunks of %i", self._chunk_size)
 
-            self._process_folders(hosts_to_create)
+            if self._connection_config.use_labels_for_path:
+                # Creating possibly missing folders if we rely on
+                # labels for the path creation.
+                self._process_folders(hosts_to_create)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
@@ -486,8 +491,9 @@ class CSVConnector(Connector):
         def ip_needs_modification(old_ip, new_ip):
             return old_ip != new_ip
 
-        def get_folder_path(labels: dict) -> str:
-            def generate_path_from_labels() -> List:
+
+        if self._connection_config.use_labels_for_path:
+            def generate_path_from_labels(labels: dict) -> List:
                 if not labels:
                     level = 3
                     return [FOLDER_PLACEHOLDER] * level
@@ -500,10 +506,14 @@ class CSVConnector(Connector):
 
                 return [first, second, third]
 
-            path = generate_path_from_labels()
-            path = '/'.join(path)
-            final_path = '/'.join((self._connection_config.folder, path))
-            return final_path
+            def get_folder_path(labels: dict) -> str:
+                path = generate_path_from_labels(labels)
+                path.insert(0, self._connection_config.folder)
+                return '/'.join(path)
+
+        else:
+            # Keeping the signature of the more complex function
+            get_folder_path = lambda unused: self._connection_config.folder
 
         tag_matcher = TagMatcher(cmk_tags)
         hosts_to_create = []
