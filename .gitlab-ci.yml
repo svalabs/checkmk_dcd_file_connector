@@ -42,8 +42,9 @@ run tests:
 
 create mkp:
   stage: package
-  needs: ["run tests"]
-  image: centos:7
+  needs:
+    - run tests
+  image: python:3-slim
   only:
     - tags
     - api
