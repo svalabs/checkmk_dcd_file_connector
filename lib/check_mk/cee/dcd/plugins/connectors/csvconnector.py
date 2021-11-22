@@ -19,6 +19,7 @@ import json
 import re
 import time
 from abc import abstractmethod
+from functools import partial
 from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
@@ -138,7 +139,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
             "use_service_discovery": self.use_service_discovery,
-            "use_labels_for_path": self.use_labels_for_path,
+            "label_path_template": self.label_path_template,
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
@@ -150,7 +151,7 @@ class CSVConnectorConfig(ConnectorConfig):
         self.host_overtake_filters = connector_cfg.get("host_overtake_filters", [])  # type: list
         self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
         self.use_service_discovery = connector_cfg.get("use_service_discovery", True)  # type: bool
-        self.use_labels_for_path = connector_cfg.get("use_labels_for_path", False)
+        self.label_path_template = connector_cfg.get("label_path_template", "")
 
 
 class FileImporter:
@@ -365,7 +366,7 @@ class CSVConnector(Connector):
             if self._chunk_size:
                 self._logger.info("Processing in chunks of %i", self._chunk_size)
 
-            if self._connection_config.use_labels_for_path:
+            if self._connection_config.label_path_template:
                 # Creating possibly missing folders if we rely on
                 # labels for the path creation.
                 self._process_folders(hosts_to_create)
@@ -491,26 +492,36 @@ class CSVConnector(Connector):
         def ip_needs_modification(old_ip, new_ip):
             return old_ip != new_ip
 
+        if self._connection_config.label_path_template:
+            path_labels = self._connection_config.label_path_template.split('/')
 
-        if self._connection_config.use_labels_for_path:
-            def generate_path_from_labels(labels: dict) -> List:
+            def generate_path_from_labels(labels: dict, keys: List[str], depth: int=0) -> List:
                 if not labels:
-                    level = 3
-                    return [FOLDER_PLACEHOLDER] * level
+                    if not depth:
+                        depth = 0
+
+                    return [FOLDER_PLACEHOLDER] * depth
 
                 # A host might have the label set without a value.
                 # In this case we want to use the placeholder.
-                first = labels.get('standort') or FOLDER_PLACEHOLDER
-                second = labels.get('stadt') or FOLDER_PLACEHOLDER
-                third = labels.get('ident') or FOLDER_PLACEHOLDER
+                path = [
+                    labels.get(key) or FOLDER_PLACEHOLDER
+                    for key
+                    in keys
+                ]
 
-                return [first, second, third]
+                return path
 
-            def get_folder_path(labels: dict) -> str:
-                path = generate_path_from_labels(labels)
+            def get_dynamic_folder_path(labels: dict, keys: List[str], depth: int) -> str:
+                path = generate_path_from_labels(labels, keys, depth)
                 path.insert(0, self._connection_config.folder)
                 return '/'.join(path)
 
+            get_folder_path = partial(
+                get_dynamic_folder_path,
+                keys=path_labels,
+                depth=len(path_labels)
+            )
         else:
             # Keeping the signature of the more complex function
             get_folder_path = lambda unused: self._connection_config.folder

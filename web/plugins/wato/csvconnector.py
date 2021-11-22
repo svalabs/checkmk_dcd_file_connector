@@ -127,22 +127,28 @@ class CSVConnectorParameters(ConnectorParameters):
                         "Select the data format for the file."
                     ),
                 )),
-                ("use_labels_for_path", Checkbox(
-                    default_value=False,
-                    title=_("Use labels for host placement"),
+                ("label_path_template", TextInput(
+                    title=_("Use labels to organize hosts"),
+                    label=_("Path template"),
+                    default_value="location/org",
                     help=_(
-                        "Controls if the placement of a host in the folder "
-                        "structure is based on the labels of the host. "
-                        "If this is activated the host folder will act as a "
-                        "prefix for the path."
+                        "Controls if the placement of a host in the "
+                        "folder structure is based on the labels of "
+                        "the host. "
+                        "If this is activated the folder selected "
+                        "under 'create hosts in' will act as a prefix "
+                        "for the path. "
+                        "Separate folders through a single forward "
+                        "slash (/). "
                     ),
+                    validate=self.validate_label_path_template,
                 )),
             ],
             optional_keys=[
                 "host_filters",
                 "host_overtake_filters",
                 "chunk_size",
-                "use_labels_for_path"
+                "label_path_template"
             ],
         )
 
@@ -150,3 +156,20 @@ class CSVConnectorParameters(ConnectorParameters):
     def validate_csv(filename, varprefix):
         if not os.path.isfile(filename):
             raise MKUserError(varprefix, "No file %r" % filename)
+
+    @staticmethod
+    def validate_label_path_template(template, varprefix):
+        if not template.islower():
+            raise MKUserError(varprefix, "Please supply only lowercase variables!")
+
+        if template.strip() != template:
+            raise MKUserError(varprefix, "Path template can not start or end with whitespace!")
+
+        if template.startswith('/'):
+            raise MKUserError(varprefix, "Do not start with a slash!")
+
+        if template.endswith('/'):
+            raise MKUserError(varprefix, "Do not specify a slash as last element!")
+
+        if '' in template.split('/'):
+            raise MKUserError(varprefix, "Do not use double slashes!")
