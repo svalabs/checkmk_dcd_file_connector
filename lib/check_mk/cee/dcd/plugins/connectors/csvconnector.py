@@ -544,7 +544,7 @@ class CSVConnector(Connector):
                 labels: dict, keys: List[str], depth: int
             ) -> str:
                 def replace_special_chars(string):
-                    return string.replace(' ', '_')
+                    return string.replace(" ", "_")
 
                 path = generate_path_from_labels(labels, keys, depth)
                 path.insert(0, self._connection_config.folder)
