@@ -543,8 +543,12 @@ class CSVConnector(Connector):
             def get_dynamic_folder_path(
                 labels: dict, keys: List[str], depth: int
             ) -> str:
+                def replace_special_chars(string):
+                    return string.replace(" ", "_")
+
                 path = generate_path_from_labels(labels, keys, depth)
                 path.insert(0, self._connection_config.folder)
+                path = (replace_special_chars(p) for p in path)
                 return PATH_SEPERATOR.join(path)
 
             get_folder_path = partial(
