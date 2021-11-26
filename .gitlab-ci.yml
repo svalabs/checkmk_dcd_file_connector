@@ -53,7 +53,10 @@ create mkp:
     - tags
     - api
     - web
+  variables:
+    VERSION: $CI_COMMIT_REF_NAME
   script:
+    - cat info | envsubst > info
     # Converting info into info.json
     - python -c 'import json; f = open("info"); exec("j=%s" % f.read()); fj = open("info.json", "w"); json.dump(j, fj)'
     # Creating required tar files
