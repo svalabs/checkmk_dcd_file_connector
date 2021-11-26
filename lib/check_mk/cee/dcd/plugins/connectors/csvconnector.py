@@ -186,9 +186,18 @@ class FileImporter:
 class CSVImporter(FileImporter):
     "Import hosts from a CSV file"
 
+    def __init__(self, filepath, delimiter=None):
+        super().__init__(filepath)
+
+        self.delimiter = delimiter
+
     def import_hosts(self):
         with open(self.filepath) as cmdb_export:
-            reader = csv.DictReader(cmdb_export)
+            if self.delimiter:
+                reader = csv.DictReader(cmdb_export, delimiter=self.delimiter)
+            else:
+                reader = csv.DictReader(cmdb_export)
+
             self.hosts = list(reader)
             self.fields = reader.fieldnames
 
@@ -292,16 +301,7 @@ class CSVConnector(Connector):
         """Execute the first synchronization phase"""
         self._logger.info("Execute phase 1")
 
-        file_format = self._connection_config.file_format
-        if file_format == "csv":
-            importer = CSVImporter(self._connection_config.path)
-        elif file_format == "bvq":
-            importer = BVQImporter(self._connection_config.path)
-        elif file_format == "json":
-            importer = JSONImporter(self._connection_config.path)
-        else:
-            raise RuntimeError("Invalid file format {!r}".format(file_format))
-
+        importer = self._get_importer()
         importer.import_hosts()
         self._logger.info("Found %i hosts in file", len(importer.hosts))
 
@@ -325,6 +325,22 @@ class CSVConnector(Connector):
             ),
             self._status,
         )
+
+    def _get_importer(self):
+        "Get the correct importer based on the current config."
+        file_format = self._connection_config.file_format
+        if file_format == "csv":
+            importer = CSVImporter(
+                self._connection_config.path, self._connection_config.csv_delimiter
+            )
+        elif file_format == "bvq":
+            importer = BVQImporter(self._connection_config.path)
+        elif file_format == "json":
+            importer = JSONImporter(self._connection_config.path)
+        else:
+            raise RuntimeError("Invalid file format {!r}".format(file_format))
+
+        return importer
 
     def _execute_phase2(self, phase1_result):
         # type: (Phase1Result) -> None
