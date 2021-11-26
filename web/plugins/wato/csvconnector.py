@@ -134,6 +134,13 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                         "Select the data format for the file."
                     ),
                 )),
+                ("csv_delimiter", TextInput(
+                    title=_("CSV delimiter"),
+                    default_value=",",
+                    help=_(
+                        "The delimiter used to separate fields in a csv file."
+                    ),
+                )),
                 ("label_path_template", TextInput(
                     title=_("Use labels to organize hosts"),
                     label=_("Path template"),
@@ -155,7 +162,8 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                 "host_filters",
                 "host_overtake_filters",
                 "chunk_size",
-                "label_path_template"
+                "label_path_template",
+                "csv_delimiter",
             ],
         )
 

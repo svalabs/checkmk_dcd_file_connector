@@ -149,6 +149,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "chunk_size": self.chunk_size,
             "use_service_discovery": self.use_service_discovery,
             "label_path_template": self.label_path_template,
+            "csv_delimiter": self.csv_delimiter,
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
@@ -165,6 +166,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "use_service_discovery", True
         )  # type: bool
         self.label_path_template = connector_cfg.get("label_path_template", "")
+        self.csv_delimiter = connector_cfg.get("csv_delimiter")
 
 
 class FileImporter:
