@@ -55,5 +55,5 @@ corresponding _Data Format_ during the connection configuration.
 
 ## Building
 
-The project creates a new `.mkp` file with every tag.
-Adjust the version in the `info` file accordingly if you plan to release.
+The project pipeline creates a new `.mkp` file with every tag.
+If running for a tag this will be used for the version. For manually triggered runs the branch name is used.
