@@ -55,6 +55,9 @@ create mkp:
     - web
   variables:
     VERSION: $CI_COMMIT_REF_NAME
+  before_script:
+    - apt update
+    - apt install -y gettext-base
   script:
     - cat info | envsubst > info
     # Converting info into info.json
