@@ -565,7 +565,11 @@ class CSVConnector(Connector):
                     return string.replace(" ", "_")
 
                 path = generate_path_from_labels(labels, keys, depth)
-                path.insert(0, self._connection_config.folder)
+                if self._connection_config.folder:
+                    # In case the hosts should be added to the main
+                    # folder we have '' as value. We do not want to
+                    # add it because it disturbs CMKs path processing.
+                    path.insert(0, self._connection_config.folder)
                 path = (replace_special_chars(p) for p in path)
                 return PATH_SEPERATOR.join(path)
 
