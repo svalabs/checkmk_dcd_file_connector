@@ -141,6 +141,14 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                         "The delimiter used to separate fields in a csv file."
                     ),
                 )),
+                ("label_prefix", TextInput(
+                    title=_("Label prefix"),
+                    default_value="dcd/",
+                    help=_(
+                        "This prefix will be attached to labels that "
+                        "come from the import file."
+                    ),
+                )),
                 ("label_path_template", TextInput(
                     title=_("Use labels to organize hosts"),
                     label=_("Path template"),
@@ -164,6 +172,7 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                 "chunk_size",
                 "label_path_template",
                 "csv_delimiter",
+                "label_prefix",
             ],
         )
 
