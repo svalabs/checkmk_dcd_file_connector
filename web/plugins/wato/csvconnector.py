@@ -146,7 +146,9 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     default_value="dcd/",
                     help=_(
                         "This prefix will be attached to labels that "
-                        "come from the import file."
+                        "come from the import file. The prefix will "
+                        "not be taken into account for path creation "
+                        "if a path template is set."
                     ),
                 )),
                 ("label_path_template", TextInput(
