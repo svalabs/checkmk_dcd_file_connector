@@ -531,7 +531,7 @@ class CSVConnector(Connector):
 
             return any(f.match(host) for f in host_filters)
 
-        def add_prefix_to_labels(labels):
+        def add_prefix_to_labels(labels: dict):
             prefix = self._connection_config.label_prefix
             if not prefix:
                 return labels
