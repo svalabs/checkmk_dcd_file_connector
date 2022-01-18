@@ -150,6 +150,7 @@ class CSVConnectorConfig(ConnectorConfig):
             "use_service_discovery": self.use_service_discovery,
             "label_path_template": self.label_path_template,
             "csv_delimiter": self.csv_delimiter,
+            "label_prefix": self.label_prefix,
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
@@ -167,6 +168,7 @@ class CSVConnectorConfig(ConnectorConfig):
         )  # type: bool
         self.label_path_template = connector_cfg.get("label_path_template", "")
         self.csv_delimiter = connector_cfg.get("csv_delimiter")
+        self.label_prefix = connector_cfg.get("label_prefix")
 
 
 class FileImporter:
@@ -529,6 +531,17 @@ class CSVConnector(Connector):
 
             return any(f.match(host) for f in host_filters)
 
+        def add_prefix_to_labels(labels: dict):
+            prefix = self._connection_config.label_prefix
+            if not prefix:
+                return labels
+
+            return {
+                prefix + key: value
+                for key, value
+                in labels.items()
+            }
+
         def needs_modification(old, new):
             for label, value in new.items():
                 try:
@@ -595,6 +608,13 @@ class CSVConnector(Connector):
                     continue  # not managed by this plugin
             except KeyError:
                 labels = get_host_label(host, hostname_field)
+
+                # Place the creation of the folder path before
+                # applying the prefix.
+                folder_path = get_folder_path(labels)
+
+                labels = add_prefix_to_labels(labels)
+
                 attributes = {
                     "labels": labels,
                     # Lock the host in order to be able to detect hosts
@@ -608,8 +628,6 @@ class CSVConnector(Connector):
 
                 tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
-
-                folder_path = get_folder_path(labels)
 
                 hosts_to_create.append((hostname, folder_path, attributes))
                 continue
