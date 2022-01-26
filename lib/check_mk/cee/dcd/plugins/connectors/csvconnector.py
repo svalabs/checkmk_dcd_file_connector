@@ -45,6 +45,7 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
     NullObject,
 )
 
+BUILTIN_ATTRIBUTES = {"locked_by", "labels", "meta_data"}
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 FOLDER_PLACEHOLDER = "undefined"
 PATH_SEPERATOR = "/"
@@ -74,8 +75,30 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
     return {
         unlabelify(key): value
         for key, value in tmp.items()
-        if not (is_tag(key) or key in IP_ATTRIBUTES)
+        if not (
+            is_tag(key)
+            or key in IP_ATTRIBUTES
+            or is_attribute(key)
+            or key in BUILTIN_ATTRIBUTES
+        )
     }
+
+
+def get_host_attributes(host: dict):
+    def unprefix(value: str):
+        # Because we use is_attribute we can be sure that every value
+        # we receive is prefixed with `attr_`
+        return value[5:]
+
+    return {
+        unprefix(key): value
+        for key, value in host.items()
+        if is_attribute(key) and unprefix(key) not in BUILTIN_ATTRIBUTES
+    }
+
+
+def is_attribute(string):
+    return string.lower().startswith("attr_")
 
 
 def get_ip_address(host: dict):
@@ -546,8 +569,15 @@ class CSVConnector(Connector):
             for label, value in new.items():
                 try:
                     if old[label] != value:
+                        self._logger.debug(
+                            "Difference detected at %r: %r vs. %r",
+                            label,
+                            old[label],
+                            value,
+                        )
                         return True
                 except KeyError:
+                    self._logger.debug("Missing %s (%r vs. %r)", label, old, new)
                     return True
 
             return False
@@ -565,6 +595,20 @@ class CSVConnector(Connector):
 
         def ip_needs_modification(old_ip, new_ip):
             return old_ip != new_ip
+
+        def clean_cmk_attributes(host: dict) -> dict:
+            """
+            Creates a cleaned up version of the host attributes dict.
+
+            The aim of this to have a dict comparable with the data
+            retrieved from the CMDB import.
+            """
+            return {
+                key: value
+                for key, value
+                in host.items()
+                if not (key in BUILTIN_ATTRIBUTES or is_tag(key))
+            }
 
         if self._connection_config.label_path_template:
             path_labels = self._connection_config.label_path_template.split(
@@ -594,6 +638,95 @@ class CSVConnector(Connector):
             def get_folder_path(_):
                 return self._connection_config.folder
 
+        def get_host_creation_tuple(
+            host: dict, hostname_field: str, global_ident: str
+        ) -> tuple:
+            labels = get_host_label(host, hostname_field)
+            folder_path = get_folder_path(labels)
+            prefixed_labels = add_prefix_to_labels(labels)
+
+            attributes = {
+                "labels": prefixed_labels,
+                # Lock the host in order to be able to detect hosts
+                # that have been created through this plugin.
+                "locked_by": global_ident,
+            }
+
+            ip_address = get_ip_address(host)
+            if ip_address is not None:
+                attributes["ipaddress"] = ip_address
+
+            tags = create_host_tags(get_host_tags(host))
+            attributes.update(tags)
+
+            attributes_from_cmdb = get_host_attributes(host)
+            attributes.update(attributes_from_cmdb)
+
+            return (hostname, folder_path, attributes)
+
+        def get_host_modification_tuple(
+            existing_host: dict,
+            cmdb_host: dict,
+            hostname_field: str,
+            overtake_host: bool,
+        ) -> tuple:
+            hostname = normalize_hostname(cmdb_host[hostname_field])
+            attributes = existing_host["attributes"]
+
+            future_attributes = get_host_attributes(cmdb_host)
+            comparable_attributes = clean_cmk_attributes(attributes)
+
+            api_label = attributes.get("labels", {})
+            future_label = get_host_label(cmdb_host, hostname_field)
+            future_label = add_prefix_to_labels(future_label)
+
+            api_tags = get_host_tags(attributes)
+            host_tags = get_host_tags(cmdb_host)
+            future_tags = create_host_tags(host_tags)
+
+            existing_ip = attributes.get("ipaddress")
+            future_ip = get_ip_address(cmdb_host)
+
+            overtake_host = hostname in hosts_to_overtake
+            update_needed = (
+                overtake_host
+                or needs_modification(comparable_attributes, future_attributes)  # noqa: W503
+                or needs_modification(api_label, future_label)  # noqa: W503
+                or needs_modification(api_tags, future_tags)  # noqa: W503
+                or ip_needs_modification(existing_ip, future_ip)  # noqa: W503
+            )  # noqa: W503
+
+            if update_needed:
+                api_label.update(future_label)
+                attributes["labels"] = api_label
+
+                attributes_to_unset = []
+                if future_ip is None:
+                    attributes_to_unset.append("ipaddress")
+                else:
+                    attributes["ipaddress"] = future_ip
+
+                attributes.update(future_tags)
+                attributes.update(future_attributes)
+
+                if overtake_host:
+                    self._logger.info("Overtaking host %r", hostname)
+                    attributes["locked_by"] = global_ident
+
+                try:
+                    del attributes["hostname"]
+                    self._logger.debug(
+                        "Host %r contained attribute 'hostname'. Original data: %r",
+                        hostname,
+                        cmdb_host,
+                    )
+                except KeyError:
+                    pass  # Nothing to do
+
+                return (hostname, attributes, attributes_to_unset)
+
+            return tuple()  # For consistent return type
+
         tag_matcher = TagMatcher(cmk_tags)
         hosts_to_create = []
         hosts_to_modify = []
@@ -606,73 +739,24 @@ class CSVConnector(Connector):
                 existing_host = cmk_hosts[hostname]
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
-            except KeyError:
-                labels = get_host_label(host, hostname_field)
-
-                # Place the creation of the folder path before
-                # applying the prefix.
-                folder_path = get_folder_path(labels)
-
-                labels = add_prefix_to_labels(labels)
-
-                attributes = {
-                    "labels": labels,
-                    # Lock the host in order to be able to detect hosts
-                    # that have been created through this plugin.
-                    "locked_by": global_ident,
-                }
-
-                ip_address = get_ip_address(host)
-                if ip_address is not None:
-                    attributes["ipaddress"] = ip_address
-
-                tags = create_host_tags(get_host_tags(host))
-                attributes.update(tags)
-
-                hosts_to_create.append((hostname, folder_path, attributes))
+            except KeyError:  # Host is missing and has to be created
+                self._logger.debug("Creating new host %s", hostname)
+                creation_tuple = get_host_creation_tuple(
+                    host, hostname_field, global_ident
+                )
+                hosts_to_create.append(creation_tuple)
                 continue
 
-            attributes = existing_host["attributes"]
-            api_label = attributes.get("labels", {})
-            future_label = get_host_label(host, hostname_field)
-
-            api_tags = get_host_tags(attributes)
-            host_tags = get_host_tags(host)
-            future_tags = create_host_tags(host_tags)
-
-            existing_ip = attributes.get("ipaddress")
-            future_ip = get_ip_address(host)
-
-            overtake_host = hostname in hosts_to_overtake
-            update_needed = (
-                overtake_host
-                or needs_modification(api_label, future_label)  # noqa: W503
-                or needs_modification(api_tags, future_tags)  # noqa: W503
-                or ip_needs_modification(existing_ip, future_ip)
-            )  # noqa: W503
-
-            if update_needed:
-                api_label.update(future_label)
-                attributes["labels"] = api_label
-                attributes["ipaddress"] = future_ip
-
-                attributes.update(future_tags)
-
-                if overtake_host:
-                    self._logger.info("Overtaking host %r", hostname)
-                    attributes["locked_by"] = global_ident
-
-                try:
-                    del attributes["hostname"]
-                    self._logger.debug(
-                        "Host %r contained attribute 'hostname'. Original data: %r",
-                        hostname,
-                        host,
-                    )
-                except KeyError:
-                    pass  # Nothing to do
-
-                hosts_to_modify.append((hostname, attributes, []))
+            self._logger.debug("Checking managed host %s", hostname)
+            host_modifications = get_host_modification_tuple(
+                existing_host,
+                host,
+                hostname_field,
+                overtake_host=bool(hostname in hosts_to_overtake)
+            )
+            if not host_modifications:
+                continue  # No changes
+            hosts_to_modify.append(host_modifications)
 
         cmdb_hostnames = set(
             normalize_hostname(host[hostname_field]) for host in cmdb_hosts

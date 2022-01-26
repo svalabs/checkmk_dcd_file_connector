@@ -16,15 +16,21 @@ Alongside that you have to choose the format your data is in.
 
 The plugin tries to detect IP addresses and set them accordingly on your hosts. Field names that are assumed to contain an IP are `ipv4`, `ip`, `ipaddress`.
 
+### Managing different host attributes
+
+The plugin supports handling different attributes of a host.
+
+This is achieved by using column or field names with special prefixes.
+
 You can prefix a column name with `tag_` for an explicit handling as a tag.
 If you prefix the column with `label_` the contents of the column will be treated as a label.
+If you prefix the column with `attr_` the contents will be handled as an attribute. Missing attributes have to be created manually.
 
+Without a given prefix the columns will be treated as tags by default.
 
 ### CSV file
 
 The first column in the CSV is expected to contain the hostname.
-
-All other columns will be treated as tags by default.
 
 #### Example
 
