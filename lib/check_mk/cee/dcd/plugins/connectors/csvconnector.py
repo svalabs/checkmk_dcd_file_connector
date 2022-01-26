@@ -639,6 +639,7 @@ class CSVConnector(Connector):
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
             except KeyError:
+                self._logger.debug("Processing new host %r", host)
                 labels = get_host_label(host, hostname_field)
 
                 # Place the creation of the folder path before
