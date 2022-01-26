@@ -674,7 +674,7 @@ class CSVConnector(Connector):
                 hosts_to_create.append(creation_tuple)
                 continue
 
-            self._logger.debug("Processing existing host %s", hostname)
+            self._logger.debug("Checking managed host %s", hostname)
             attributes = existing_host["attributes"]
 
             future_attributes = get_host_attributes(host)
