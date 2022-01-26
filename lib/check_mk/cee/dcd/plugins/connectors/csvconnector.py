@@ -678,7 +678,7 @@ class CSVConnector(Connector):
             attributes = existing_host["attributes"]
 
             future_attributes = get_host_attributes(host)
-            comparable_attributes = clean_cmk_attributes(existing_host)
+            comparable_attributes = clean_cmk_attributes(attributes)
 
             api_label = attributes.get("labels", {})
             future_label = get_host_label(host, hostname_field)
