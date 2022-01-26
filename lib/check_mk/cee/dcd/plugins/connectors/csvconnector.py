@@ -682,6 +682,7 @@ class CSVConnector(Connector):
 
             api_label = attributes.get("labels", {})
             future_label = get_host_label(host, hostname_field)
+            future_label = add_prefix_to_labels(future_label)
 
             api_tags = get_host_tags(attributes)
             host_tags = get_host_tags(host)
