@@ -652,44 +652,23 @@ class CSVConnector(Connector):
 
             return (hostname, folder_path, attributes)
 
-        tag_matcher = TagMatcher(cmk_tags)
-        hosts_to_create = []
-        hosts_to_modify = []
-        for host in cmdb_hosts:
-            hostname = normalize_hostname(host[hostname_field])
-            if not host_matches_filters(hostname):
-                continue
-
-            try:
-                existing_host = cmk_hosts[hostname]
-                if hostname in unrelated_hosts:
-                    continue  # not managed by this plugin
-            except KeyError:  # Host is missing and has to be created
-                self._logger.debug("Creating new host %s", hostname)
-                creation_tuple = get_host_creation_tuple(
-                    host,
-                    hostname_field,
-                    global_ident
-                )
-                hosts_to_create.append(creation_tuple)
-                continue
-
-            self._logger.debug("Checking managed host %s", hostname)
+        def get_host_modification_tuple(existing_host: dict, cmdb_host: dict, hostname_field: str, overtake_host: bool) -> tuple:
+            hostname = normalize_hostname(cmdb_host[hostname_field])
             attributes = existing_host["attributes"]
 
-            future_attributes = get_host_attributes(host)
+            future_attributes = get_host_attributes(cmdb_host)
             comparable_attributes = clean_cmk_attributes(attributes)
 
             api_label = attributes.get("labels", {})
-            future_label = get_host_label(host, hostname_field)
+            future_label = get_host_label(cmdb_host, hostname_field)
             future_label = add_prefix_to_labels(future_label)
 
             api_tags = get_host_tags(attributes)
-            host_tags = get_host_tags(host)
+            host_tags = get_host_tags(cmdb_host)
             future_tags = create_host_tags(host_tags)
 
             existing_ip = attributes.get("ipaddress")
-            future_ip = get_ip_address(host)
+            future_ip = get_ip_address(cmdb_host)
 
             overtake_host = hostname in hosts_to_overtake
             update_needed = (
@@ -722,12 +701,47 @@ class CSVConnector(Connector):
                     self._logger.debug(
                         "Host %r contained attribute 'hostname'. Original data: %r",
                         hostname,
-                        host,
+                        cmdb_host,
                     )
                 except KeyError:
                     pass  # Nothing to do
 
-                hosts_to_modify.append((hostname, attributes, attributes_to_unset))
+                return (hostname, attributes, attributes_to_unset)
+
+            return tuple()  # For consistent return type
+
+        tag_matcher = TagMatcher(cmk_tags)
+        hosts_to_create = []
+        hosts_to_modify = []
+        for host in cmdb_hosts:
+            hostname = normalize_hostname(host[hostname_field])
+            if not host_matches_filters(hostname):
+                continue
+
+            try:
+                existing_host = cmk_hosts[hostname]
+                if hostname in unrelated_hosts:
+                    continue  # not managed by this plugin
+            except KeyError:  # Host is missing and has to be created
+                self._logger.debug("Creating new host %s", hostname)
+                creation_tuple = get_host_creation_tuple(
+                    host,
+                    hostname_field,
+                    global_ident
+                )
+                hosts_to_create.append(creation_tuple)
+                continue
+
+            self._logger.debug("Checking managed host %s", hostname)
+            host_modifications = get_host_modification_tuple(
+                existing_host,
+                host,
+                hostname_field,
+                overtake_host=bool(hostname in hosts_to_overtake)
+            )
+            if not host_modifications:
+                continue  # No changes
+            hosts_to_modify.append(host_modifications)
 
         cmdb_hostnames = set(
             normalize_hostname(host[hostname_field]) for host in cmdb_hosts
