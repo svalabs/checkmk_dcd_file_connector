@@ -626,6 +626,34 @@ class CSVConnector(Connector):
             def get_folder_path(_):
                 return self._connection_config.folder
 
+        def get_host_creation_tuple(host: dict, hostname_field: str, global_ident: str) -> tuple:
+            labels = get_host_label(host, hostname_field)
+
+            # Place the creation of the folder path before
+            # applying the prefix.
+            folder_path = get_folder_path(labels)
+
+            labels = add_prefix_to_labels(labels)
+
+            attributes = {
+                "labels": labels,
+                # Lock the host in order to be able to detect hosts
+                # that have been created through this plugin.
+                "locked_by": global_ident,
+            }
+
+            ip_address = get_ip_address(host)
+            if ip_address is not None:
+                attributes["ipaddress"] = ip_address
+
+            tags = create_host_tags(get_host_tags(host))
+            attributes.update(tags)
+
+            attributes_from_cmdb = get_host_attributes(host)
+            attributes.update(attributes_from_cmdb)
+
+            return (hostname, folder_path, attributes)
+
         tag_matcher = TagMatcher(cmk_tags)
         hosts_to_create = []
         hosts_to_modify = []
@@ -638,33 +666,13 @@ class CSVConnector(Connector):
                 existing_host = cmk_hosts[hostname]
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
-            except KeyError:
-                labels = get_host_label(host, hostname_field)
-
-                # Place the creation of the folder path before
-                # applying the prefix.
-                folder_path = get_folder_path(labels)
-
-                labels = add_prefix_to_labels(labels)
-
-                attributes = {
-                    "labels": labels,
-                    # Lock the host in order to be able to detect hosts
-                    # that have been created through this plugin.
-                    "locked_by": global_ident,
-                }
-
-                ip_address = get_ip_address(host)
-                if ip_address is not None:
-                    attributes["ipaddress"] = ip_address
-
-                tags = create_host_tags(get_host_tags(host))
-                attributes.update(tags)
-
-                attributes_from_cmdb = get_host_attributes(host)
-                attributes.update(attributes_from_cmdb)
-
-                hosts_to_create.append((hostname, folder_path, attributes))
+            except KeyError:  # Host is missing and has to be created
+                creation_tuple = get_host_creation_tuple(
+                    host,
+                    hostname_field,
+                    global_ident
+                )
+                hosts_to_create.append(creation_tuple)
                 continue
 
             attributes = existing_host["attributes"]
