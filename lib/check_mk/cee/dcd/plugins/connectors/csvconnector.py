@@ -586,6 +586,20 @@ class CSVConnector(Connector):
         def ip_needs_modification(old_ip, new_ip):
             return old_ip != new_ip
 
+        def clean_cmk_attributes(host: dict) -> dict:
+            """
+            Creates a cleaned up version of the host attributes dict.
+
+            The aim of this to have a dict comparable with the data
+            retrieved from the CMDB import.
+            """
+            return {
+                key: value
+                for key, value
+                in host.items()
+                if not (key in BUILTIN_ATTRIBUTES or is_tag(key))
+            }
+
         if self._connection_config.label_path_template:
             path_labels = self._connection_config.label_path_template.split(
                 PATH_SEPERATOR
@@ -656,7 +670,9 @@ class CSVConnector(Connector):
                 continue
 
             attributes = existing_host["attributes"]
+
             future_attributes = get_host_attributes(host)
+            comparable_attributes = clean_cmk_attributes(existing_host)
 
             api_label = attributes.get("labels", {})
             future_label = get_host_label(host, hostname_field)
@@ -671,6 +687,7 @@ class CSVConnector(Connector):
             overtake_host = hostname in hosts_to_overtake
             update_needed = (
                 overtake_host
+                or needs_modification(comparable_attributes, future_attributes)  # noqa: W503
                 or needs_modification(api_label, future_label)  # noqa: W503
                 or needs_modification(api_tags, future_tags)  # noqa: W503
                 or ip_needs_modification(existing_ip, future_ip)
@@ -682,6 +699,7 @@ class CSVConnector(Connector):
                 attributes["ipaddress"] = future_ip
 
                 attributes.update(future_tags)
+                attributes.update(future_attributes)
 
                 if overtake_host:
                     self._logger.info("Overtaking host %r", hostname)
