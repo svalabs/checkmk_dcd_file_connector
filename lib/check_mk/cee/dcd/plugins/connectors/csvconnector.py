@@ -628,15 +628,11 @@ class CSVConnector(Connector):
 
         def get_host_creation_tuple(host: dict, hostname_field: str, global_ident: str) -> tuple:
             labels = get_host_label(host, hostname_field)
-
-            # Place the creation of the folder path before
-            # applying the prefix.
             folder_path = get_folder_path(labels)
-
-            labels = add_prefix_to_labels(labels)
+            prefixed_labels = add_prefix_to_labels(labels)
 
             attributes = {
-                "labels": labels,
+                "labels": prefixed_labels,
                 # Lock the host in order to be able to detect hosts
                 # that have been created through this plugin.
                 "locked_by": global_ident,
