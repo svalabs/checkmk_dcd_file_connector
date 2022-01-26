@@ -636,7 +636,12 @@ class CSVConnector(Connector):
             if update_needed:
                 api_label.update(future_label)
                 attributes["labels"] = api_label
-                attributes["ipaddress"] = future_ip
+
+                attributes_to_unset = []
+                if future_ip is None:
+                    attributes_to_unset.append("ipaddress")
+                else:
+                    attributes["ipaddress"] = future_ip
 
                 attributes.update(future_tags)
 
@@ -654,7 +659,7 @@ class CSVConnector(Connector):
                 except KeyError:
                     pass  # Nothing to do
 
-                hosts_to_modify.append((hostname, attributes, []))
+                hosts_to_modify.append((hostname, attributes, attributes_to_unset))
 
         cmdb_hostnames = set(
             normalize_hostname(host[hostname_field]) for host in cmdb_hosts
