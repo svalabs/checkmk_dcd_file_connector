@@ -89,7 +89,7 @@ def get_host_attributes(host: dict):
     return {
         unmark(key): value
         for key, value in host.items()
-        if is_attribute(key) and key not in BUILTIN_ATTRIBUTES
+        if is_attribute(key) and unmark(key) not in BUILTIN_ATTRIBUTES
     }
 
 
