@@ -51,7 +51,6 @@ FOLDER_PLACEHOLDER = "undefined"
 PATH_SEPERATOR = "/"
 
 
-
 def normalize_hostname(hostname: str) -> str:
     "Generate a normalized hostname form"
     return hostname.lower().replace(" ", "_")
