@@ -696,7 +696,7 @@ class CSVConnector(Connector):
                 or needs_modification(comparable_attributes, future_attributes)  # noqa: W503
                 or needs_modification(api_label, future_label)  # noqa: W503
                 or needs_modification(api_tags, future_tags)  # noqa: W503
-                or ip_needs_modification(existing_ip, future_ip)
+                or ip_needs_modification(existing_ip, future_ip)  # noqa: W503
             )  # noqa: W503
 
             if update_needed:
