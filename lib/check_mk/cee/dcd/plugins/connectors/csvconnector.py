@@ -80,16 +80,15 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
 
 
 def get_host_attributes(host: dict):
-    def unmark(value: str):
-        if value.startswith("attr_"):
-            return value[5:]
-
-        return value
+    def unprefix(value: str):
+        # Because we use is_attribute we can be sure that every value
+        # we receive is prefixed with `attr_`
+        return value[5:]
 
     return {
-        unmark(key): value
+        unprefix(key): value
         for key, value in host.items()
-        if is_attribute(key) and unmark(key) not in BUILTIN_ATTRIBUTES
+        if is_attribute(key) and unprefix(key) not in BUILTIN_ATTRIBUTES
     }
 
 
