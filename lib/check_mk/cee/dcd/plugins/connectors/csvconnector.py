@@ -564,8 +564,10 @@ class CSVConnector(Connector):
             for label, value in new.items():
                 try:
                     if old[label] != value:
+                        self._logger.debug("Difference detected at %r: %r vs. %r", label, old[label], value)
                         return True
                 except KeyError:
+                    self._logger.debug("Missing %s (%r vs. %r)", label, old, new)
                     return True
 
             return False
@@ -663,6 +665,7 @@ class CSVConnector(Connector):
                 if hostname in unrelated_hosts:
                     continue  # not managed by this plugin
             except KeyError:  # Host is missing and has to be created
+                self._logger.debug("Creating new host %s", hostname)
                 creation_tuple = get_host_creation_tuple(
                     host,
                     hostname_field,
@@ -671,6 +674,7 @@ class CSVConnector(Connector):
                 hosts_to_create.append(creation_tuple)
                 continue
 
+            self._logger.debug("Processing existing host %s", hostname)
             attributes = existing_host["attributes"]
 
             future_attributes = get_host_attributes(host)
