@@ -75,7 +75,12 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
     return {
         unlabelify(key): value
         for key, value in tmp.items()
-        if not (is_tag(key) or key in IP_ATTRIBUTES or is_attribute(key) or key in BUILTIN_ATTRIBUTES)
+        if not (
+            is_tag(key)
+            or key in IP_ATTRIBUTES
+            or is_attribute(key)
+            or key in BUILTIN_ATTRIBUTES
+        )
     }
 
 
@@ -564,7 +569,12 @@ class CSVConnector(Connector):
             for label, value in new.items():
                 try:
                     if old[label] != value:
-                        self._logger.debug("Difference detected at %r: %r vs. %r", label, old[label], value)
+                        self._logger.debug(
+                            "Difference detected at %r: %r vs. %r",
+                            label,
+                            old[label],
+                            value,
+                        )
                         return True
                 except KeyError:
                     self._logger.debug("Missing %s (%r vs. %r)", label, old, new)
@@ -628,7 +638,9 @@ class CSVConnector(Connector):
             def get_folder_path(_):
                 return self._connection_config.folder
 
-        def get_host_creation_tuple(host: dict, hostname_field: str, global_ident: str) -> tuple:
+        def get_host_creation_tuple(
+            host: dict, hostname_field: str, global_ident: str
+        ) -> tuple:
             labels = get_host_label(host, hostname_field)
             folder_path = get_folder_path(labels)
             prefixed_labels = add_prefix_to_labels(labels)
@@ -652,7 +664,12 @@ class CSVConnector(Connector):
 
             return (hostname, folder_path, attributes)
 
-        def get_host_modification_tuple(existing_host: dict, cmdb_host: dict, hostname_field: str, overtake_host: bool) -> tuple:
+        def get_host_modification_tuple(
+            existing_host: dict,
+            cmdb_host: dict,
+            hostname_field: str,
+            overtake_host: bool,
+        ) -> tuple:
             hostname = normalize_hostname(cmdb_host[hostname_field])
             attributes = existing_host["attributes"]
 
@@ -725,9 +742,7 @@ class CSVConnector(Connector):
             except KeyError:  # Host is missing and has to be created
                 self._logger.debug("Creating new host %s", hostname)
                 creation_tuple = get_host_creation_tuple(
-                    host,
-                    hostname_field,
-                    global_ident
+                    host, hostname_field, global_ident
                 )
                 hosts_to_create.append(creation_tuple)
                 continue
