@@ -59,7 +59,7 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
     """
     Get the labels from a host.
 
-    Labels are either prefixed with "_label" or are not any of the
+    Labels are either prefixed with "label_" or are not any of the
     known values for IPs.
     """
 
