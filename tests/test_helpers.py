@@ -95,3 +95,30 @@ def test_create_hostlike_tags(tags_from_api, expected_tags):
 ])
 def test_get_ip_address(host, expected_ip):
     assert expected_ip == csvconnector.get_ip_address(host)
+
+
+def test_getting_host_attributes():
+    host_dict = {
+        "hostname": "hubert",
+        "attr_destination": "San Remo",
+        "attr_description": "Fantastic race",
+        "tag_paella": "Fine dish",
+        "label_soup": "tomato",
+        "attr_locked_by": "us",
+        "attr_meta_data": "metametameta",
+        "unprefixed": "should not show up",
+        "attr_labels": {"first": "1"}
+    }
+
+    host = csvconnector.get_host_attributes(host_dict)
+
+    assert "unprefixed" not in host
+    assert "hostname" not in host
+    for key in host:
+        assert key not in csvconnector.BUILTIN_ATTRIBUTES
+        assert not key.startswith("tag_")
+        assert not key.startswith("label_")
+
+    assert len(host) == 2
+    assert host["destination"] == "San Remo"
+    assert host["description"] == "Fantastic race"

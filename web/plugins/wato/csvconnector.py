@@ -11,8 +11,8 @@
 # |                                                            |
 # +------------------------------------------------------------+
 #
-# Copyright (C) 2021  Niko Wenselowski <niko.wenselowski@sva.de>
-#                     for SVA System Vertrieb Alexander GmbH
+# Copyright (C) 2021-2022 Niko Wenselowski <niko.wenselowski@sva.de>
+#                         for SVA System Vertrieb Alexander GmbH
 """
 WATO configuration module for CSVConnector.
 """
@@ -141,6 +141,16 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                         "The delimiter used to separate fields in a csv file."
                     ),
                 )),
+                ("label_prefix", TextInput(
+                    title=_("Label prefix"),
+                    default_value="dcd/",
+                    help=_(
+                        "This prefix will be attached to labels that "
+                        "come from the import file. The prefix will "
+                        "not be taken into account for path creation "
+                        "if a path template is set."
+                    ),
+                )),
                 ("label_path_template", TextInput(
                     title=_("Use labels to organize hosts"),
                     label=_("Path template"),
@@ -164,6 +174,7 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                 "chunk_size",
                 "label_path_template",
                 "csv_delimiter",
+                "label_prefix",
             ],
         )
 
