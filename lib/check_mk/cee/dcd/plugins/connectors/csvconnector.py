@@ -45,9 +45,11 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
     NullObject,
 )
 
+BUILTIN_ATTRIBUTES = {"locked_by", "labels", "meta_data"}
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 FOLDER_PLACEHOLDER = "undefined"
 PATH_SEPERATOR = "/"
+
 
 
 def normalize_hostname(hostname: str) -> str:
@@ -74,8 +76,26 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
     return {
         unlabelify(key): value
         for key, value in tmp.items()
-        if not (is_tag(key) or key in IP_ATTRIBUTES)
+        if not (is_tag(key) or key in IP_ATTRIBUTES or is_attribute(key) or key in BUILTIN_ATTRIBUTES)
     }
+
+
+def get_host_attributes(host: dict):
+    def unmark(value: str):
+        if value.startswith("attr_"):
+            return value[5:]
+
+        return value
+
+    return {
+        unmark(key): value
+        for key, value in host.items()
+        if is_attribute(key) and key not in BUILTIN_ATTRIBUTES
+    }
+
+
+def is_attribute(string):
+    return string.lower().startswith("attr_")
 
 
 def get_ip_address(host: dict):
@@ -629,10 +649,15 @@ class CSVConnector(Connector):
                 tags = create_host_tags(get_host_tags(host))
                 attributes.update(tags)
 
+                attributes_from_cmdb = get_host_attributes(host)
+                attributes.update(attributes_from_cmdb)
+
                 hosts_to_create.append((hostname, folder_path, attributes))
                 continue
 
             attributes = existing_host["attributes"]
+            future_attributes = get_host_attributes(host)
+
             api_label = attributes.get("labels", {})
             future_label = get_host_label(host, hostname_field)
 
