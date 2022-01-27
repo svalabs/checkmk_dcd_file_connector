@@ -560,11 +560,7 @@ class CSVConnector(Connector):
             if not prefix:
                 return labels
 
-            return {
-                prefix + key: value
-                for key, value
-                in labels.items()
-            }
+            return {f"{prefix}{key}": value for key, value in labels.items()}
 
         def needs_modification(old, new):
             for label, value in new.items():
