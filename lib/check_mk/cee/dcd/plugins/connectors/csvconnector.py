@@ -555,7 +555,7 @@ class CSVConnector(Connector):
 
             return any(f.match(host) for f in host_filters)
 
-        def add_prefix_to_labels(labels: dict):
+        def add_prefix_to_labels(labels: dict, prefix: Optional[str] = None):
             prefix = self._connection_config.label_prefix
             if not prefix:
                 return labels
@@ -640,11 +640,14 @@ class CSVConnector(Connector):
                 return self._connection_config.folder
 
         def get_host_creation_tuple(
-            host: dict, hostname_field: str, global_ident: str
+            host: dict,
+            hostname_field: str,
+            global_ident: str,
+            label_prefix: Optional[str] = None,
         ) -> tuple:
             labels = get_host_label(host, hostname_field)
             folder_path = get_folder_path(labels)
-            prefixed_labels = add_prefix_to_labels(labels)
+            prefixed_labels = add_prefix_to_labels(labels, label_prefix)
 
             attributes = {
                 "labels": prefixed_labels,
@@ -670,7 +673,7 @@ class CSVConnector(Connector):
             cmdb_host: dict,
             hostname_field: str,
             overtake_host: bool,
-            label_prefix: Optional[str]=None,
+            label_prefix: Optional[str] = None,
         ) -> tuple:
             hostname = normalize_hostname(cmdb_host[hostname_field])
             attributes = existing_host["attributes"]
@@ -681,7 +684,7 @@ class CSVConnector(Connector):
             api_label = attributes.get("labels", {})
 
             future_label = get_host_label(cmdb_host, hostname_field)
-            future_label = add_prefix_to_labels(future_label)
+            future_label = add_prefix_to_labels(future_label, label_prefix)
             if label_prefix:
                 # We only manage labels that match our prefix
                 unmodified_api_label = api_label.copy()
@@ -774,7 +777,10 @@ class CSVConnector(Connector):
             except KeyError:  # Host is missing and has to be created
                 self._logger.debug("Creating new host %s", hostname)
                 creation_tuple = get_host_creation_tuple(
-                    host, hostname_field, global_ident
+                    host,
+                    hostname_field,
+                    global_ident,
+                    label_prefix=self._connection_config.label_prefix,
                 )
                 hosts_to_create.append(creation_tuple)
                 continue
