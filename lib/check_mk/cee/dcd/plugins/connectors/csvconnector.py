@@ -297,7 +297,8 @@ class BVQImporter(FileImporter):
 
         self.fields = fields
 
-    def format_host(self, host):
+    @classmethod
+    def format_host(cls, host):
         "Get a host object formatted as required for further processing"
         # BVQ sends more fields than we handle.
         # We currently exclude:
@@ -306,7 +307,7 @@ class BVQImporter(FileImporter):
 
         new_host = {"name": host["name"]}
 
-        for host_key, json_key in self.FIELD_MAPPING:
+        for host_key, json_key in cls.FIELD_MAPPING:
             try:
                 new_host[host_key] = host[json_key]
             except KeyError:
