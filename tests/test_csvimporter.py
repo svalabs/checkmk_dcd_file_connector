@@ -4,14 +4,25 @@ from csvconnector import CSVImporter
 import pytest
 
 
+@pytest.fixture(params=[None, ';'], ids=["no delimiter", ";"])
+def delimiter(request):
+    yield request.param
+
+
 @pytest.fixture
-def example_file():
+def example_file(delimiter):
     current_dir = os.path.dirname(__file__)
+    if delimiter == ';':
+        return os.path.join(current_dir, "example_data_semicolon.csv")
+
     return os.path.join(current_dir, "example_data.csv")
 
 
 @pytest.fixture
-def importer(example_file):
+def importer(example_file, delimiter):
+    if delimiter:
+        return CSVImporter(example_file, delimiter=delimiter)
+
     return CSVImporter(example_file)
 
 
