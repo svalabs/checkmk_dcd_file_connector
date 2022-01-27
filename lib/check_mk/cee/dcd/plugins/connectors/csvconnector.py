@@ -364,7 +364,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
         elif file_format == "json":
             importer = JSONImporter(self._connection_config.path)
         else:
-            raise RuntimeError("Invalid file format {!r}".format(file_format))
+            raise RuntimeError(f"Invalid file format {file_format!r}")
 
         return importer
 
@@ -384,8 +384,8 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
 
             if not isinstance(phase1_result.connector_object, FileConnectorHosts):
                 raise ValueError(
-                    "Got invalid connector object as phase 1 result: %r"
-                    % phase1_result.connector_object
+                    "Got invalid connector object as phase 1 result: "
+                    f"{phase1_result.connector_object!r}"
                 )
 
             cmdb_hosts = phase1_result.connector_object.hosts
@@ -1039,8 +1039,8 @@ class TagMatcher:
 
         if raise_error and not match_found:
             raise ValueError(
-                "{!r} is no possible choice for tag {}. "
-                "Valid tags are: {}".format(value, tag, ", ".join(values))
+                f"{value!r} is no possible choice for tag {tag}. "
+                "Valid tags are: {}".format(", ".join(values))
             )
 
         return match_found
