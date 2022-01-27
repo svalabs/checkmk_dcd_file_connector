@@ -78,14 +78,16 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
         for key, value in tmp.items()
         if not (
             is_tag(key)
-            or key in IP_ATTRIBUTES
-            or is_attribute(key)
-            or key in BUILTIN_ATTRIBUTES
+            or key in IP_ATTRIBUTES  # noqa: W503
+            or is_attribute(key)  # noqa: W503
+            or key in BUILTIN_ATTRIBUTES  # noqa: W503
         )
     }
 
 
 def get_host_attributes(host: dict):
+    "Get unprefixed host attributes from the given dict."
+
     def unprefix(value: str):
         # Because we use is_attribute we can be sure that every value
         # we receive is prefixed with `attr_`
@@ -99,6 +101,7 @@ def get_host_attributes(host: dict):
 
 
 def is_attribute(string):
+    "Checks if a field is marked as attribute."
     return string.lower().startswith("attr_")
 
 
@@ -120,6 +123,7 @@ def get_ip_address(host: dict):
 
 
 def get_host_tags(attributes: dict) -> dict:
+    "Get attributes of the host from the given dict"
     return {attr: value for attr, value in attributes.items() if is_tag(attr)}
 
 
@@ -154,7 +158,7 @@ def chunks(iterable, count):
 
 
 @connector_config_registry.register
-class CSVConnectorConfig(ConnectorConfig):
+class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
 
     @classmethod
@@ -178,24 +182,24 @@ class CSVConnectorConfig(ConnectorConfig):
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
-        self.interval = connector_cfg["interval"]  # type: int
-        self.path = connector_cfg["path"]  # type: str
-        self.file_format = connector_cfg.get("file_format", "csv")  # type: str
-        self.folder = connector_cfg["folder"]  # type: str
-        self.host_filters = connector_cfg.get("host_filters", [])  # type: list
-        self.host_overtake_filters = connector_cfg.get(
+        self.interval: int = connector_cfg["interval"]  # pylint: disable=attribute-defined-outside-init
+        self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
+        self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
+        self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
+        self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
+        self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
-        )  # type: list
-        self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
-        self.use_service_discovery = connector_cfg.get(
+        )
+        self.chunk_size: int = connector_cfg.get("chunk_size", 0)  # pylint: disable=attribute-defined-outside-init
+        self.use_service_discovery: bool = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "use_service_discovery", True
-        )  # type: bool
-        self.label_path_template = connector_cfg.get("label_path_template", "")
-        self.csv_delimiter = connector_cfg.get("csv_delimiter")
-        self.label_prefix = connector_cfg.get("label_prefix")
+        )
+        self.label_path_template: str = connector_cfg.get("label_path_template", "")  # pylint: disable=attribute-defined-outside-init
+        self.csv_delimiter: Optional[str] = connector_cfg.get("csv_delimiter")  # pylint: disable=attribute-defined-outside-init
+        self.label_prefix: Optional[str] = connector_cfg.get("label_prefix")  # pylint: disable=attribute-defined-outside-init
 
 
-class FileImporter:
+class FileImporter:  # pylint: disable=too-few-public-methods
     "Basic file importer"
 
     def __init__(self, filepath):
@@ -209,7 +213,7 @@ class FileImporter:
         "This function will be called for importing the hosts."
 
 
-class CSVImporter(FileImporter):
+class CSVImporter(FileImporter):  # pylint: disable=too-few-public-methods
     "Import hosts from a CSV file"
 
     def __init__(self, filepath, delimiter=None):
@@ -218,7 +222,7 @@ class CSVImporter(FileImporter):
         self.delimiter = delimiter
 
     def import_hosts(self):
-        with open(self.filepath) as cmdb_export:
+        with open(self.filepath) as cmdb_export:  # pylint: disable=unspecified-encoding
             if self.delimiter:
                 reader = csv.DictReader(cmdb_export, delimiter=self.delimiter)
             else:
@@ -235,7 +239,7 @@ class CSVImporter(FileImporter):
             pass
 
 
-class JSONImporter(FileImporter):
+class JSONImporter(FileImporter):  # pylint: disable=too-few-public-methods
     "Import hosts from a file with JSON"
 
     EXPECTED_HOST_NAMES = [
@@ -244,7 +248,7 @@ class JSONImporter(FileImporter):
     ]
 
     def import_hosts(self):
-        with open(self.filepath) as export_file:
+        with open(self.filepath) as export_file:  # pylint: disable=unspecified-encoding
             self.hosts = json.load(export_file)
 
         fields = set()
@@ -278,7 +282,7 @@ class BVQImporter(FileImporter):
         self.hostname_field = "name"
 
     def import_hosts(self):
-        with open(self.filepath) as export_file:
+        with open(self.filepath) as export_file:  # pylint: disable=unspecified-encoding
             hosts = json.load(export_file)
 
         self.hosts = [
@@ -293,7 +297,9 @@ class BVQImporter(FileImporter):
 
         self.fields = fields
 
-    def format_host(self, host):
+    @classmethod
+    def format_host(cls, host):
+        "Get a host object formatted as required for further processing"
         # BVQ sends more fields than we handle.
         # We currently exclude:
         #  - masterGroupingObjectIpv4
@@ -301,7 +307,7 @@ class BVQImporter(FileImporter):
 
         new_host = {"name": host["name"]}
 
-        for host_key, json_key in self.FIELD_MAPPING:
+        for host_key, json_key in cls.FIELD_MAPPING:
             try:
                 new_host[host_key] = host[json_key]
             except KeyError:
@@ -311,7 +317,7 @@ class BVQImporter(FileImporter):
 
 
 @connector_registry.register
-class CSVConnector(Connector):
+class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
     @classmethod
     def name(cls):
         # type: () -> str
@@ -364,7 +370,7 @@ class CSVConnector(Connector):
         elif file_format == "json":
             importer = JSONImporter(self._connection_config.path)
         else:
-            raise RuntimeError("Invalid file format {!r}".format(file_format))
+            raise RuntimeError(f"Invalid file format {file_format!r}")
 
         return importer
 
@@ -384,8 +390,8 @@ class CSVConnector(Connector):
 
             if not isinstance(phase1_result.connector_object, FileConnectorHosts):
                 raise ValueError(
-                    "Got invalid connector object as phase 1 result: %r"
-                    % phase1_result.connector_object
+                    "Got invalid connector object as phase 1 result: "
+                    f"{phase1_result.connector_object!r}"
                 )
 
             cmdb_hosts = phase1_result.connector_object.hosts
@@ -992,7 +998,7 @@ class CSVConnector(Connector):
         try:
             self._web_api.activate_changes()
         except MKAPIError as error:
-            if "no changes to activate" in "%s" % error:
+            if "no changes to activate" in str(error):
                 self._logger.info(_("There was no change to activate"))
                 return False
             raise
@@ -1013,9 +1019,9 @@ class TagMatcher:
     * If no matching tag is found throw an error.
     """
 
-    def __init__(self, d):
-        self._original = d
-        self._normalized_names = {key.lower(): key for key in d}
+    def __init__(self, tags: dict):
+        self._original = tags
+        self._normalized_names = {key.lower(): key for key in tags}
 
     def get_tag(self, name):
         # type: (str) -> str
@@ -1039,8 +1045,8 @@ class TagMatcher:
 
         if raise_error and not match_found:
             raise ValueError(
-                "{!r} is no possible choice for tag {}. "
-                "Valid tags are: {}".format(value, tag, ", ".join(values))
+                f"{value!r} is no possible choice for tag {tag}. "
+                "Valid tags are: {}".format(", ".join(values))
             )
 
         return match_found
