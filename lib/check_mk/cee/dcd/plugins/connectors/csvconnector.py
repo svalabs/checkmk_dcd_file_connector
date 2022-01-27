@@ -78,9 +78,9 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
         for key, value in tmp.items()
         if not (
             is_tag(key)
-            or key in IP_ATTRIBUTES
-            or is_attribute(key)
-            or key in BUILTIN_ATTRIBUTES
+            or key in IP_ATTRIBUTES  # noqa: W503
+            or is_attribute(key)  # noqa: W503
+            or key in BUILTIN_ATTRIBUTES  # noqa: W503
         )
     }
 
@@ -154,7 +154,7 @@ def chunks(iterable, count):
 
 
 @connector_config_registry.register
-class CSVConnectorConfig(ConnectorConfig):
+class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
 
     @classmethod
@@ -178,24 +178,24 @@ class CSVConnectorConfig(ConnectorConfig):
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
-        self.interval = connector_cfg["interval"]  # type: int
-        self.path = connector_cfg["path"]  # type: str
-        self.file_format = connector_cfg.get("file_format", "csv")  # type: str
-        self.folder = connector_cfg["folder"]  # type: str
-        self.host_filters = connector_cfg.get("host_filters", [])  # type: list
-        self.host_overtake_filters = connector_cfg.get(
+        self.interval: int = connector_cfg["interval"]  # pylint: disable=attribute-defined-outside-init
+        self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
+        self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
+        self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
+        self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
+        self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
-        )  # type: list
-        self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
-        self.use_service_discovery = connector_cfg.get(
+        )
+        self.chunk_size: int = connector_cfg.get("chunk_size", 0)  # pylint: disable=attribute-defined-outside-init
+        self.use_service_discovery: bool = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "use_service_discovery", True
-        )  # type: bool
-        self.label_path_template = connector_cfg.get("label_path_template", "")
-        self.csv_delimiter = connector_cfg.get("csv_delimiter")
-        self.label_prefix = connector_cfg.get("label_prefix")
+        )
+        self.label_path_template: str = connector_cfg.get("label_path_template", "")  # pylint: disable=attribute-defined-outside-init
+        self.csv_delimiter: Optional[str] = connector_cfg.get("csv_delimiter")  # pylint: disable=attribute-defined-outside-init
+        self.label_prefix: Optional[str] = connector_cfg.get("label_prefix")  # pylint: disable=attribute-defined-outside-init
 
 
-class FileImporter:
+class FileImporter:  # pylint: disable=too-few-public-methods
     "Basic file importer"
 
     def __init__(self, filepath):
@@ -209,7 +209,7 @@ class FileImporter:
         "This function will be called for importing the hosts."
 
 
-class CSVImporter(FileImporter):
+class CSVImporter(FileImporter):  # pylint: disable=too-few-public-methods
     "Import hosts from a CSV file"
 
     def __init__(self, filepath, delimiter=None):
@@ -235,7 +235,7 @@ class CSVImporter(FileImporter):
             pass
 
 
-class JSONImporter(FileImporter):
+class JSONImporter(FileImporter):  # pylint: disable=too-few-public-methods
     "Import hosts from a file with JSON"
 
     EXPECTED_HOST_NAMES = [
@@ -311,7 +311,7 @@ class BVQImporter(FileImporter):
 
 
 @connector_registry.register
-class CSVConnector(Connector):
+class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
     @classmethod
     def name(cls):
         # type: () -> str
