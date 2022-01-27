@@ -936,6 +936,11 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
             )
 
     def _modify_existing_hosts(self, hosts_to_modify: List[tuple]) -> List[str]:
+        """
+        Modify the given hosts. Returns the IDs of modified hosts.
+
+        Will chunk the given hosts if necessary.
+        """
         if not hosts_to_modify:
             self._logger.debug("Nothing to modify")
             return []
@@ -956,6 +961,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
         return modified_host_names
 
     def _modify_hosts(self, hosts_to_modify: List[tuple]) -> List[str]:
+        "Modify the given hosts. Returns the IDs of modified hosts."
         self._logger.debug(
             "Modifying %i hosts (%s)",
             len(hosts_to_modify),
@@ -989,6 +995,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
         return hosts_to_delete
 
     def _activate_changes(self) -> bool:
+        "Activate changes. Returns a boolean representation of the success."
         self._logger.debug("Activating changes")
         try:
             self._web_api.activate_changes()
