@@ -218,7 +218,7 @@ class CSVImporter(FileImporter):  # pylint: disable=too-few-public-methods
         self.delimiter = delimiter
 
     def import_hosts(self):
-        with open(self.filepath) as cmdb_export:
+        with open(self.filepath) as cmdb_export:  # pylint: disable=unspecified-encoding
             if self.delimiter:
                 reader = csv.DictReader(cmdb_export, delimiter=self.delimiter)
             else:
@@ -244,7 +244,7 @@ class JSONImporter(FileImporter):  # pylint: disable=too-few-public-methods
     ]
 
     def import_hosts(self):
-        with open(self.filepath) as export_file:
+        with open(self.filepath) as export_file:  # pylint: disable=unspecified-encoding
             self.hosts = json.load(export_file)
 
         fields = set()
@@ -278,7 +278,7 @@ class BVQImporter(FileImporter):
         self.hostname_field = "name"
 
     def import_hosts(self):
-        with open(self.filepath) as export_file:
+        with open(self.filepath) as export_file:  # pylint: disable=unspecified-encoding
             hosts = json.load(export_file)
 
         self.hosts = [
