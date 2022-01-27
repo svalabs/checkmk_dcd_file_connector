@@ -28,6 +28,7 @@ from itertools import zip_longest
 from typing import (  # pylint: disable=unused-import
     Dict,
     List,
+    Optional,
     Set,
     Tuple,
 )
@@ -554,7 +555,7 @@ class CSVConnector(Connector):
 
             return any(f.match(host) for f in host_filters)
 
-        def add_prefix_to_labels(labels: dict):
+        def add_prefix_to_labels(labels: dict, prefix: Optional[str] = None):
             prefix = self._connection_config.label_prefix
             if not prefix:
                 return labels
@@ -639,11 +640,14 @@ class CSVConnector(Connector):
                 return self._connection_config.folder
 
         def get_host_creation_tuple(
-            host: dict, hostname_field: str, global_ident: str
+            host: dict,
+            hostname_field: str,
+            global_ident: str,
+            label_prefix: Optional[str] = None,
         ) -> tuple:
             labels = get_host_label(host, hostname_field)
             folder_path = get_folder_path(labels)
-            prefixed_labels = add_prefix_to_labels(labels)
+            prefixed_labels = add_prefix_to_labels(labels, label_prefix)
 
             attributes = {
                 "labels": prefixed_labels,
@@ -669,6 +673,7 @@ class CSVConnector(Connector):
             cmdb_host: dict,
             hostname_field: str,
             overtake_host: bool,
+            label_prefix: Optional[str] = None,
         ) -> tuple:
             hostname = normalize_hostname(cmdb_host[hostname_field])
             attributes = existing_host["attributes"]
@@ -677,8 +682,18 @@ class CSVConnector(Connector):
             comparable_attributes = clean_cmk_attributes(attributes)
 
             api_label = attributes.get("labels", {})
+
             future_label = get_host_label(cmdb_host, hostname_field)
-            future_label = add_prefix_to_labels(future_label)
+            future_label = add_prefix_to_labels(future_label, label_prefix)
+            if label_prefix:
+                # We only manage labels that match our prefix
+                unmodified_api_label = api_label.copy()
+                api_label = {
+                    key: value
+                    for key, value
+                    in api_label.items()
+                    if key.startswith(label_prefix)
+                }
 
             api_tags = get_host_tags(attributes)
             host_tags = get_host_tags(cmdb_host)
@@ -688,15 +703,35 @@ class CSVConnector(Connector):
             future_ip = get_ip_address(cmdb_host)
 
             overtake_host = hostname in hosts_to_overtake
-            update_needed = (
-                overtake_host
-                or needs_modification(comparable_attributes, future_attributes)  # noqa: W503
-                or needs_modification(api_label, future_label)  # noqa: W503
-                or needs_modification(api_tags, future_tags)  # noqa: W503
-                or ip_needs_modification(existing_ip, future_ip)  # noqa: W503
-            )  # noqa: W503
 
-            if update_needed:
+            def update_needed():
+                if overtake_host:
+                    self._logger.debug("Host marked for overtake")
+                    return True
+
+                if needs_modification(comparable_attributes, future_attributes):
+                    self._logger.debug("Attributes require update")
+                    return True
+
+                if needs_modification(api_label, future_label):
+                    self._logger.debug("Labels require update")
+                    return True
+
+                if needs_modification(api_tags, future_tags):
+                    self._logger.debug("Tags require update")
+                    return True
+
+                if ip_needs_modification(existing_ip, future_ip):
+                    self._logger.debug("IP requires update")
+                    return True
+
+                return False  # Nothing changed
+
+            if update_needed():
+                if label_prefix:
+                    unmodified_api_label.update(api_label)
+                    api_label = unmodified_api_label
+
                 api_label.update(future_label)
                 attributes["labels"] = api_label
 
@@ -742,7 +777,10 @@ class CSVConnector(Connector):
             except KeyError:  # Host is missing and has to be created
                 self._logger.debug("Creating new host %s", hostname)
                 creation_tuple = get_host_creation_tuple(
-                    host, hostname_field, global_ident
+                    host,
+                    hostname_field,
+                    global_ident,
+                    label_prefix=self._connection_config.label_prefix,
                 )
                 hosts_to_create.append(creation_tuple)
                 continue
@@ -752,7 +790,8 @@ class CSVConnector(Connector):
                 existing_host,
                 host,
                 hostname_field,
-                overtake_host=bool(hostname in hosts_to_overtake)
+                overtake_host=bool(hostname in hosts_to_overtake),
+                label_prefix=self._connection_config.label_prefix,
             )
             if not host_modifications:
                 continue  # No changes
