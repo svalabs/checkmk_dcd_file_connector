@@ -1019,9 +1019,9 @@ class TagMatcher:
     * If no matching tag is found throw an error.
     """
 
-    def __init__(self, d):
-        self._original = d
-        self._normalized_names = {key.lower(): key for key in d}
+    def __init__(self, tags: dict):
+        self._original = tags
+        self._normalized_names = {key.lower(): key for key in tags}
 
     def get_tag(self, name):
         # type: (str) -> str
