@@ -86,6 +86,8 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
 
 
 def get_host_attributes(host: dict):
+    "Get unprefixed host attributes from the given dict."
+
     def unprefix(value: str):
         # Because we use is_attribute we can be sure that every value
         # we receive is prefixed with `attr_`
@@ -99,6 +101,7 @@ def get_host_attributes(host: dict):
 
 
 def is_attribute(string):
+    "Checks if a field is marked as attribute."
     return string.lower().startswith("attr_")
 
 
@@ -120,6 +123,7 @@ def get_ip_address(host: dict):
 
 
 def get_host_tags(attributes: dict) -> dict:
+    "Get attributes of the host from the given dict"
     return {attr: value for attr, value in attributes.items() if is_tag(attr)}
 
 
@@ -294,6 +298,7 @@ class BVQImporter(FileImporter):
         self.fields = fields
 
     def format_host(self, host):
+        "Get a host object formatted as required for further processing"
         # BVQ sends more fields than we handle.
         # We currently exclude:
         #  - masterGroupingObjectIpv4
