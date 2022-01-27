@@ -700,15 +700,31 @@ class CSVConnector(Connector):
             future_ip = get_ip_address(cmdb_host)
 
             overtake_host = hostname in hosts_to_overtake
-            update_needed = (
-                overtake_host
-                or needs_modification(comparable_attributes, future_attributes)  # noqa: W503
-                or needs_modification(api_label, future_label)  # noqa: W503
-                or needs_modification(api_tags, future_tags)  # noqa: W503
-                or ip_needs_modification(existing_ip, future_ip)  # noqa: W503
-            )  # noqa: W503
 
-            if update_needed:
+            def update_needed():
+                if overtake_host:
+                    self._logger.debug("Host marked for overtake")
+                    return True
+
+                if needs_modification(comparable_attributes, future_attributes):
+                    self._logger.debug("Attributes require update")
+                    return True
+
+                if needs_modification(api_label, future_label):
+                    self._logger.debug("Labels require update")
+                    return True
+
+                if needs_modification(api_tags, future_tags):
+                    self._logger.debug("Tags require update")
+                    return True
+
+                if ip_needs_modification(existing_ip, future_ip):
+                    self._logger.debug("IP requires update")
+                    return True
+
+                return False  # Nothing changed
+
+            if update_needed():
                 if label_prefix:
                     unmodified_api_label.update(api_label)
                     api_label = unmodified_api_label
