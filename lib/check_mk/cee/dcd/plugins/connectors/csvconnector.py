@@ -992,7 +992,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
         try:
             self._web_api.activate_changes()
         except MKAPIError as error:
-            if "no changes to activate" in "%s" % error:
+            if "no changes to activate" in str(error):
                 self._logger.info(_("There was no change to activate"))
                 return False
             raise
