@@ -28,6 +28,7 @@ from itertools import zip_longest
 from typing import (  # pylint: disable=unused-import
     Dict,
     List,
+    Optional,
     Set,
     Tuple,
 )
@@ -669,6 +670,7 @@ class CSVConnector(Connector):
             cmdb_host: dict,
             hostname_field: str,
             overtake_host: bool,
+            label_prefix: Optional[str]=None,
         ) -> tuple:
             hostname = normalize_hostname(cmdb_host[hostname_field])
             attributes = existing_host["attributes"]
@@ -677,8 +679,18 @@ class CSVConnector(Connector):
             comparable_attributes = clean_cmk_attributes(attributes)
 
             api_label = attributes.get("labels", {})
+
             future_label = get_host_label(cmdb_host, hostname_field)
             future_label = add_prefix_to_labels(future_label)
+            if label_prefix:
+                # We only manage labels that match our prefix
+                unmodified_api_label = api_label.copy()
+                api_label = {
+                    key: value
+                    for key, value
+                    in api_label.items()
+                    if key.startswith(label_prefix)
+                }
 
             api_tags = get_host_tags(attributes)
             host_tags = get_host_tags(cmdb_host)
@@ -697,6 +709,10 @@ class CSVConnector(Connector):
             )  # noqa: W503
 
             if update_needed:
+                if label_prefix:
+                    unmodified_api_label.update(api_label)
+                    api_label = unmodified_api_label
+
                 api_label.update(future_label)
                 attributes["labels"] = api_label
 
@@ -752,7 +768,8 @@ class CSVConnector(Connector):
                 existing_host,
                 host,
                 hostname_field,
-                overtake_host=bool(hostname in hosts_to_overtake)
+                overtake_host=bool(hostname in hosts_to_overtake),
+                label_prefix=self._connection_config.label_prefix,
             )
             if not host_modifications:
                 continue  # No changes
