@@ -497,10 +497,10 @@ class Chunker:
         self._api_client = api_client
         self._chunk_size = chunk_size
 
-        self._CHUNKABLE = set.union(self._CHUNKABLE_METHODS, self._CHUNKABLE_FUNCTIONS)
+        self._chunkable = set.union(self._CHUNKABLE_METHODS, self._CHUNKABLE_FUNCTIONS)
 
     def __getattr__(self, attr):
-        if attr in self._CHUNKABLE:
+        if attr in self._chunkable:
             api_method = getattr(self._api_client, attr)
 
             if attr in self._CHUNKABLE_METHODS:
