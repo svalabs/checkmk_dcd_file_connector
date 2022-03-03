@@ -1185,7 +1185,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             len(hosts_to_modify),
             ", ".join(h[0] for h in hosts_to_modify),
         )
-        result = self._api_client.edit_hosts(hosts_to_modify)
+        result = self._api_client.modify_hosts(hosts_to_modify)
 
         for hostname, message in sorted(result["failed_hosts"].items()):
             self._logger.error('Modification of "%s" failed: %s', hostname, message)
