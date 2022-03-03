@@ -457,7 +457,7 @@ class HttpApiClient(BaseApiClient):
         # Working around limitations of the builtin client to get the
         # required results from the API.
         # The second parameter has to be a dict.
-        return self._api_client._api_request("webapi.py?action=get_hosttags", {})
+        return self._api_client._api_request("webapi.py?action=get_hosttags", {})  # pylint: disable=protected-access
 
     def discover_services(self, hostnames: List[str]):
         self._api_client.bulk_discovery_start(hostnames)
@@ -477,7 +477,7 @@ class HttpApiClient(BaseApiClient):
         return True
 
     def get_folders(self) -> Set[str]:
-        all_folders = self._api_client._api_request("webapi.py?action=get_all_folders", {})
+        all_folders = self._api_client._api_request("webapi.py?action=get_all_folders", {})  # pylint: disable=protected-access
         return set(all_folders)
 
     def add_folder(self, folder: str):
