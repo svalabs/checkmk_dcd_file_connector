@@ -38,7 +38,7 @@ import json
 import re
 import time
 from abc import ABC, abstractmethod
-from functools import partial
+from functools import partial, wraps
 from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
@@ -165,13 +165,6 @@ def create_hostlike_tags(tags_from_cmk: dict) -> Dict[str, List[str]]:
         "tag_" + tag["id"]: [choice["id"] for choice in tag["tags"]]
         for tag in tags_from_cmk
     }
-
-
-def chunks(iterable: Iterable, count: int):
-    "Collect data into fixed-length chunks or blocks"
-    # chunks('ABCDEFG', 3) --> ABC DEF Gxx"
-    args = [iter(iterable)] * count
-    return zip_longest(*args)
 
 
 @connector_config_registry.register
@@ -425,6 +418,14 @@ class BaseApiClient(ABC):
     def activate_changes(self) -> bool:
         pass
 
+    @property
+    def requires_activation(self) -> bool:
+        """
+        This function indicates if the class requires an explicit
+        activation after making changes.
+        """
+        return True
+
     @abstractmethod
     def get_folders(self) -> Set[str]:
         pass
@@ -485,6 +486,67 @@ class HttpApiClient(BaseApiClient):
         data = {"request": json.dumps(folder_data)}
 
         self._api_client._api_request("webapi.py?action=add_folder", data)
+
+
+class Chunker:
+
+    _CHUNKABLE_METHODS = {"delete_hosts"}
+    _CHUNKABLE_FUNCTIONS = {"add_hosts", "modify_hosts"}
+
+    def __init__(self, api_client: BaseApiClient, chunk_size: int):
+        self._api_client = api_client
+        self._chunk_size = chunk_size
+
+        self._CHUNKABLE = set.union(self._CHUNKABLE_METHODS, self._CHUNKABLE_FUNCTIONS)
+
+    def __getattr__(self, attr):
+        if attr in self._CHUNKABLE:
+            api_method = getattr(self._api_client, attr)
+
+            if attr in self._CHUNKABLE_METHODS:
+                return self._chunk_call(api_method)
+            else:
+                return self._chunk_returning_call(api_method)
+        else:
+            return getattr(self._api_client, attr)
+
+    @property
+    def requires_activation(self) -> bool:
+        # The wrapped methods activate the changes.
+        return False
+
+    @staticmethod
+    def chunks(iterable: Iterable, count: int) -> Iterable:
+        "Collect data into fixed-length chunks or blocks"
+        # chunks('ABCDEFG', 3) --> ABC DEF Gxx"
+        args = [iter(iterable)] * count
+        return zip_longest(*args)
+
+    def _chunk_returning_call(self, function):
+
+        @wraps(function)
+        def wrap_function(parameter):
+            returned_values = []
+            for chunk in self.chunks(parameter, self._chunk_size):
+                single_call_return = function([c for c in chunk if c])
+
+                if single_call_return:
+                    returned_values.extend(single_call_return)
+                    self._api_client.activate_changes()
+
+            return returned_values
+
+        return wrap_function
+
+    def _chunk_call(self, function):
+
+        @wraps(function)
+        def wrap_method(parameter):
+            for chunk in self.chunks(parameter, self._chunk_size):
+                function([c for c in chunk if c])
+                self._api_client.activate_changes()
+
+        return wrap_method
 
 
 @connector_registry.register
@@ -600,9 +662,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 # labels for the path creation.
                 self._process_folders(hosts_to_create)
 
-            self._chunk_size = self._connection_config.chunk_size
-            if self._chunk_size:
-                self._logger.info("Processing in chunks of %i", self._chunk_size)
+            chunk_size = self._connection_config.chunk_size
+            if chunk_size:
+                self._logger.info("Processing in chunks of %i", chunk_size)
+                self._api_client = Chunker(self._api_client, chunk_size)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
@@ -648,10 +711,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_activate", _("Phase 2.4: Activating changes")
         ) as step:
-            if changes_to_hosts and not self._chunk_size:
-                # When used with chunks each step activates the host
-                # changes they did. Therefore no further activation
-                # is needed.
+            if changes_to_hosts and self._api_client.requires_activation:
                 if self._activate_changes():
                     step.finish(_("Activated the changes"))
                 else:
@@ -1043,17 +1103,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             self._logger.debug("Nothing to create")
             return []
 
-        if self._chunk_size:
-            created_host_names = []
-            for chunk in chunks(hosts_to_create, self._chunk_size):
-                created_hosts = self._create_hosts([h for h in chunk if h])
-
-                if created_hosts:
-                    created_host_names.extend(created_hosts)
-                    self._logger.debug("Activating changes...")
-                    self._activate_changes()
-        else:
-            created_host_names = self._create_hosts(hosts_to_create)
+        created_host_names = self._create_hosts(hosts_to_create)
 
         self._logger.debug("Created %i hosts", len(created_host_names))
         if not created_host_names:
@@ -1121,17 +1171,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             self._logger.debug("Nothing to modify")
             return []
 
-        if self._chunk_size:
-            modified_host_names = []
-            for chunk in chunks(hosts_to_modify, self._chunk_size):
-                modified_hosts = self._modify_hosts([h for h in chunk if h])
-
-                if modified_hosts:
-                    modified_host_names.extend(modified_hosts)
-                    self._logger.debug("Activating changes...")
-                    self._activate_changes()
-        else:
-            modified_host_names = self._modify_hosts(hosts_to_modify)
+        modified_host_names = self._modify_hosts(hosts_to_modify)
 
         self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
@@ -1156,13 +1196,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             self._logger.debug("Nothing to delete")
             return []
 
-        if self._chunk_size:
-            for chunk in chunks(hosts_to_delete, self._chunk_size):
-                self._api_client.delete_hosts([h for h in chunk if h])
-                self._logger.debug("Activating changes...")
-                self._activate_changes()
-        else:
-            self._api_client.delete_hosts(hosts_to_delete)
+        self._api_client.delete_hosts(hosts_to_delete)
 
         self._logger.debug(
             "Deleted %i hosts (%s)", len(hosts_to_delete), ", ".join(hosts_to_delete)
