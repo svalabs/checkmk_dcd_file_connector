@@ -504,11 +504,13 @@ class Chunker:
             api_method = getattr(self._api_client, attr)
 
             if attr in self._CHUNKABLE_METHODS:
-                return self._chunk_call(api_method)
+                attribute = self._chunk_call(api_method)
             else:
-                return self._chunk_returning_call(api_method)
+                attribute = self._chunk_returning_call(api_method)
         else:
-            return getattr(self._api_client, attr)
+            attribute = getattr(self._api_client, attr)
+
+        return attribute
 
     @property
     def requires_activation(self) -> bool:
