@@ -386,6 +386,107 @@ class LowercaseImporter:
         return value.lower()
 
 
+class BaseApiClient(ABC):
+
+    def __init__(self, api_client):
+        self._api_client = api_client
+
+    @abstractmethod
+    def get_hosts(self) -> List[dict]:
+        pass
+
+    @abstractmethod
+    def add_hosts(self, hosts: List[dict]) -> Dict:
+        pass
+
+    @abstractmethod
+    def modify_hosts(self, hosts: List[dict]):
+        pass
+
+    @abstractmethod
+    def delete_hosts(self, hosts: List[dict]):
+        pass
+
+    @abstractmethod
+    def get_host_tags(self):
+        # TODO: what format do we want to be returned?
+        pass
+
+    @abstractmethod
+    def discover_services(self, hosts: List[str]) -> bool:
+        # TODO: discovery status check necessary to be exposed as a single function?
+        pass
+
+    @abstractmethod
+    def is_discovery_running(self) -> bool:
+        pass
+
+    @abstractmethod
+    def activate_changes(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_folders(self) -> Set[str]:
+        pass
+
+    @abstractmethod
+    def add_folder(self, folder: str):
+        pass
+
+
+class HttpApiClient(BaseApiClient):
+    # The following lines can be used to debug _api_client.
+    # self._logger.info("Dir: {}".format(dir(self._api_client)))
+    # import inspect
+    # self._logger.info("Sig: {}".format(inspect.getargspec(self._api_client._api_request)))
+
+    def get_hosts(self) -> List[dict]:
+        return self._api_client.get_all_hosts()
+
+    def add_hosts(self, hosts: List[dict]) -> Dict:
+        return self._api_client.add_hosts(hosts)
+
+    def modify_hosts(self, hosts: List[dict]):
+        self._api_client.edit_hosts(hosts)
+
+    def delete_hosts(self, hosts: List[dict]):
+        self._api_client.delete_hosts(hosts)
+
+    def get_host_tags(self):
+        # Working around limitations of the builtin client to get the
+        # required results from the API.
+        # The second parameter has to be a dict.
+        return self._api_client._api_request("webapi.py?action=get_hosttags", {})
+
+    def discover_services(self, hostnames: List[str]):
+        self._api_client.bulk_discovery_start(hostnames)
+
+    def is_discovery_running(self) -> bool:
+        return self._api_client.bulk_discovery_status()["is_active"]
+
+    def activate_changes(self) -> bool:
+        try:
+            self._api_client.activate_changes()
+        except MKAPIError as error:
+            if "no changes to activate" in str(error):
+                return False
+
+            raise
+
+        return True
+
+    def get_folders(self) -> Set[str]:
+        all_folders = self._api_client._api_request("webapi.py?action=get_all_folders", {})
+        return set(all_folders)
+
+    def add_folder(self, folder: str):
+        # Follow the required format for the request.
+        folder_data = {"folder": folder, "attributes": {}}
+        data = {"request": json.dumps(folder_data)}
+
+        self._api_client._api_request("webapi.py?action=add_folder", data)
+
+
 @connector_registry.register
 class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     "The connector that manages the importing"
@@ -473,27 +574,14 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")
         ):
-            cmk_hosts = self._web_api.get_all_hosts()
+            self._api_client = HttpApiClient(self._web_api)
+
+            cmk_hosts = self._api_client.get_hosts()
 
             cmk_tags = {}
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
-                # The builtin _web_api only has methods for very few
-                # API commands. In an ideal world we could directly
-                # call the API like this:
-                # cmk_tags = self._web_api.get_hosttags()
-
-                # The following lines can be used to debug _web_api.
-                # self._logger.info("Dir: {}".format(dir(self._web_api)))
-                # import inspect
-                # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
-
-                # Working around to get the required results from
-                # the API.
-                # The second parameter has to be a dict.
-                tag_response = self._web_api._api_request(
-                    "webapi.py?action=get_hosttags", {}
-                )
+                tag_response = self._api_client.get_host_tags()
 
                 cmk_tags = create_hostlike_tags(tag_response["tag_groups"])
                 cmk_tags.update(
@@ -897,16 +985,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         # Folders are represented as a string.
         # Paths are written Unix style: 'folder/subfolder'
         host_folders = self._get_folders(hosts)
-        existing_folders = self._get_existing_folders()
+        existing_folders = self._api_client.get_folders()
 
         folders_to_create = host_folders - existing_folders
         self._logger.debug("Creating the following folders: %s", folders_to_create)
         self._create_folders(sorted(folders_to_create))
-
-    def _get_existing_folders(self) -> Set[str]:
-        all_folders = self._web_api._api_request("webapi.py?action=get_all_folders", {})
-
-        return set(all_folders)
 
     def _get_folders(self, hosts: List[dict]) -> Set[str]:
         "Get the folders from the hosts to create."
@@ -925,12 +1008,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         created_folders = []
         for folder in folders:
             self._logger.info("Creating folder: %s", folder)
-
-            # Follow the required format for the request.
-            folder_data = {"folder": folder, "attributes": {}}
-            data = {"request": json.dumps(folder_data)}
-
-            self._web_api._api_request("webapi.py?action=add_folder", data)
+            self._api_client.add_folder(folder)
             created_folders.append(folder)
 
         # We want our folders to exist before processing the hosts
@@ -992,7 +1070,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             len(hosts_to_create),
             ", ".join(h[0] for h in hosts_to_create),
         )
-        result = self._web_api.add_hosts(hosts_to_create)
+        result = self._api_client.add_hosts(hosts_to_create)
 
         for hostname, message in sorted(result["failed_hosts"].items()):
             self._logger.error('Creation of "%s" failed: %s', hostname, message)
@@ -1005,7 +1083,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             len(host_names_to_discover),
             host_names_to_discover,
         )
-        self._web_api.bulk_discovery_start(host_names_to_discover)
+        self._api_client.discover_services(host_names_to_discover)
         self._wait_for_bulk_discovery()
 
     def _wait_for_bulk_discovery(self):
@@ -1015,7 +1093,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         start = time.time()
 
         def discovery_stopped() -> bool:
-            return self._web_api.bulk_discovery_status()["is_active"] is False
+            return self._api_client.is_discovery_running() is False
 
         def get_duration() -> int:
             return time.time() - start
@@ -1065,7 +1143,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             len(hosts_to_modify),
             ", ".join(h[0] for h in hosts_to_modify),
         )
-        result = self._web_api.edit_hosts(hosts_to_modify)
+        result = self._api_client.edit_hosts(hosts_to_modify)
 
         for hostname, message in sorted(result["failed_hosts"].items()):
             self._logger.error('Modification of "%s" failed: %s', hostname, message)
@@ -1080,11 +1158,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
         if self._chunk_size:
             for chunk in chunks(hosts_to_delete, self._chunk_size):
-                self._web_api.delete_hosts([h for h in chunk if h])
+                self._api_client.delete_hosts([h for h in chunk if h])
                 self._logger.debug("Activating changes...")
                 self._activate_changes()
         else:
-            self._web_api.delete_hosts(hosts_to_delete)
+            self._api_client.delete_hosts(hosts_to_delete)
 
         self._logger.debug(
             "Deleted %i hosts (%s)", len(hosts_to_delete), ", ".join(hosts_to_delete)
@@ -1095,14 +1173,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     def _activate_changes(self) -> bool:
         "Activate changes. Returns a boolean representation of the success."
         self._logger.debug("Activating changes")
-        try:
-            self._web_api.activate_changes()
-        except MKAPIError as error:
-            if "no changes to activate" in str(error):
-                self._logger.info(_("There was no change to activate"))
-                return False
-            raise
-        return True
+        changes_activated = self._api_client.activate_changes()
+        if not changes_activated:
+            self._logger.info(_("There was no change to activate"))
+
+        return changes_activated
 
 
 class TagMatcher:
