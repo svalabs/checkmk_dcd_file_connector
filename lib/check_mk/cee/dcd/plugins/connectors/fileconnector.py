@@ -406,7 +406,7 @@ class BaseApiClient(ABC):
         pass
 
     @abstractmethod
-    def discover_services(self, hosts: List[str]) -> bool:
+    def discover_services(self, hostnames: List[str]) -> bool:
         # TODO: discovery status check necessary to be exposed as a single function?
         pass
 
