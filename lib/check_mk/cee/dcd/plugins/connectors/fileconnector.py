@@ -485,7 +485,7 @@ class HttpApiClient(BaseApiClient):
         folder_data = {"folder": folder, "attributes": {}}
         data = {"request": json.dumps(folder_data)}
 
-        self._api_client._api_request("webapi.py?action=add_folder", data)
+        self._api_client._api_request("webapi.py?action=add_folder", data)  # pylint: disable=protected-access
 
 
 class Chunker:
