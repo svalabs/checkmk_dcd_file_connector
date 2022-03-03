@@ -37,7 +37,7 @@ import csv
 import json
 import re
 import time
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from functools import partial
 from itertools import zip_longest
 
@@ -217,7 +217,7 @@ class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-me
         self.label_prefix: Optional[str] = connector_cfg.get("label_prefix")  # pylint: disable=attribute-defined-outside-init
 
 
-class FileImporter:  # pylint: disable=too-few-public-methods
+class FileImporter(ABC):  # pylint: disable=too-few-public-methods
     "Basic file importer"
 
     def __init__(self, filepath: str):
