@@ -872,7 +872,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
         def are_folders_missing() -> bool:
             existing_folders = self._get_existing_folders()
             missing_folders = set(folders) - existing_folders
-            self._logger("Missing the following folders: %s", ", ".join(missing_folders))
+            self._logger.debug("Missing the following folders: %s", ", ".join(missing_folders))
             return bool(missing_folders)
 
         def get_duration() -> int:
