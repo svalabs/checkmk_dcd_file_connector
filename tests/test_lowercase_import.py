@@ -19,6 +19,21 @@ class FakeImporter(FileImporter):
         self.hostname_field = "HostName"
         # TODO: Add hosts
 
+        self.hosts = [
+            {
+                "HostName": "hubert",
+                "Server_LOC": "iShelter",
+                "funny": False
+            },
+            {
+                "HostName": "heinz",
+                "IpAddress": "HIDDEN",
+                "size": 10,
+                "pi": 3.14,
+
+            }
+        ]
+
 
 @pytest.fixture
 def import_path():
@@ -71,3 +86,15 @@ def test_lowercasing_hosts_only_if_filled(importer):
     lowercaseImporter = LowercaseImporter(importer)
 
     assert not lowercaseImporter.hosts
+
+
+def test_import_hosts(importer):
+    lowercaseImporter = LowercaseImporter(importer)
+    lowercaseImporter.import_hosts()
+
+    for host in lowercaseImporter.hosts:
+        for key, value in host.items():
+            assert key.islower()
+
+            if isinstance(value, str):
+                assert value.islower()

@@ -318,6 +318,54 @@ class BVQImporter(FileImporter):
         return new_host
 
 
+class LowercaseImporter:
+    "This modifies an importer to only return lowercased values"
+
+    def __init__(self, importer):
+        self._importer = importer
+
+    @property
+    def filepath(self):
+        return self._importer.filepath
+
+    @property
+    def hosts(self):
+        hosts = self._importer.hosts
+        if hosts is None:
+            return None
+
+        def lowercase(value):
+            if isinstance(value, (int, float, bool)):
+                return value
+
+            return value.lower()
+
+        def lowercase_host(host):
+
+            return {key.lower(): lowercase(value) for key, value in host.items()}
+
+        return [lowercase_host(host) for host in hosts]
+
+    @property
+    def fields(self):
+        fields = self._importer.fields
+        if fields is None:
+            return None
+
+        return [fieldname.lower() for fieldname in fields]
+
+    @property
+    def hostname_field(self):
+        hostname_field = self._importer.hostname_field
+        if hostname_field is None:
+            return None
+
+        return hostname_field.lower()
+
+    def import_hosts(self):
+        return self._importer.import_hosts()
+
+
 @connector_registry.register
 class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
     @classmethod
