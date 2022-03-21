@@ -172,6 +172,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
             "path": self.path,
             "file_format": self.file_format,
             "folder": self.folder,
+            "lowercase_everything": self.lowercase_everything,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
@@ -186,6 +187,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
         self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
+        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -368,6 +370,10 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
             importer = JSONImporter(self._connection_config.path)
         else:
             raise RuntimeError(f"Invalid file format {file_format!r}")
+
+        if self._connection_config.lowercase_everything:
+            self._logger.info("All imported values will be lowercased")
+            importer = LowercaseImporter(importer)
 
         return importer
 
