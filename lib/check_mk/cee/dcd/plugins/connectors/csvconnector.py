@@ -859,8 +859,30 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
 
         # We want our folders to exist before processing the hosts
         self._activate_changes()
+        self._wait_for_folders(folders)
 
         return created_folders
+
+    def _wait_for_folders(self, folders: List[str]):
+        self._logger.debug("Waiting for folders to be created")
+        timeout = 60  # seconds
+        interval = 2  # seconds
+        start = time.time()
+
+        def are_folders_missing() -> bool:
+            existing_folders = self._get_existing_folders()
+            missing_folders = set(folders) - existing_folders
+            self._logger.debug("Missing the following folders: %s", ", ".join(missing_folders))
+            return bool(missing_folders)
+
+        def get_duration() -> int:
+            return time.time() - start
+
+        while are_folders_missing() and get_duration() < timeout:
+            time.sleep(interval)
+
+        if get_duration() > timeout:
+            self._logger.debug("Timed out after waiting %is for folders to be created.", timeout)
 
     def _create_new_hosts(self, hosts_to_create: List[tuple]) -> List[str]:
         if not hosts_to_create:
