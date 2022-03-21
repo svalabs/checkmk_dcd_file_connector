@@ -204,9 +204,9 @@ class FileImporter:  # pylint: disable=too-few-public-methods
 
     def __init__(self, filepath: str):
         self.filepath = filepath
-        self.hosts = None
-        self.fields = None
-        self.hostname_field = None
+        self.hosts: Optional[dict] = None
+        self.fields: Optional[List[str]] = None
+        self.hostname_field: Optional[str] = None
 
     @abstractmethod
     def import_hosts(self):
