@@ -859,8 +859,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
 
         # We want our folders to exist before processing the hosts
         self._activate_changes()
-
-        self._wait_for_folders()
+        self._wait_for_folders(folders)
 
         return created_folders
 
