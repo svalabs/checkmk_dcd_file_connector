@@ -1,5 +1,5 @@
 {'author': u'Niko Wenselowski <niko.wenselowski@sva.de>',
- 'description': u'Import data from an file in CSV, JSON or BVQ format.\n',
+ 'description': u'Import data from a file in CSV, JSON or BVQ format.\n',
  'download_url': 'https://www.sva.de/de/services/services/operational-services',
  'files': {'lib': ['check_mk/cee/dcd/plugins/connectors/csvconnector.py'],
            'web': ['plugins/wato/csvconnector.py']},
