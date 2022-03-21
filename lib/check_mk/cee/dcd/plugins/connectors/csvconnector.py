@@ -27,6 +27,7 @@ from itertools import zip_longest
 
 from typing import (  # pylint: disable=unused-import
     Dict,
+    Iterable,
     List,
     Optional,
     Set,
@@ -57,7 +58,7 @@ def normalize_hostname(hostname: str) -> str:
     return hostname.lower().replace(" ", "_")
 
 
-def get_host_label(host: dict, hostname_field: str) -> dict:
+def get_host_label(host: Dict[str, str], hostname_field: str) -> Dict[str, str]:
     """
     Get the labels from a host.
 
@@ -65,7 +66,7 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
     known values for IPs.
     """
 
-    def unlabelify(value):
+    def unlabelify(value: str) -> str:
         if value.startswith("label_"):
             return value[6:]
 
@@ -78,15 +79,17 @@ def get_host_label(host: dict, hostname_field: str) -> dict:
         for key, value in tmp.items()
         if not (
             is_tag(key)
-            or key in IP_ATTRIBUTES
-            or is_attribute(key)
-            or key in BUILTIN_ATTRIBUTES
+            or key in IP_ATTRIBUTES  # noqa: W503
+            or is_attribute(key)  # noqa: W503
+            or key in BUILTIN_ATTRIBUTES  # noqa: W503
         )
     }
 
 
-def get_host_attributes(host: dict):
-    def unprefix(value: str):
+def get_host_attributes(host: Dict[str, str]) -> Dict[str, str]:
+    "Get unprefixed host attributes from the given dict."
+
+    def unprefix(value: str) -> str:
         # Because we use is_attribute we can be sure that every value
         # we receive is prefixed with `attr_`
         return value[5:]
@@ -98,11 +101,12 @@ def get_host_attributes(host: dict):
     }
 
 
-def is_attribute(string):
+def is_attribute(string: str) -> str:
+    "Checks if a field is marked as attribute."
     return string.lower().startswith("attr_")
 
 
-def get_ip_address(host: dict):
+def get_ip_address(host: Dict[str, str]) -> Optional[str]:
     """
     Tries to get an IP address for a host. If not found returns `None`.
 
@@ -119,11 +123,12 @@ def get_ip_address(host: dict):
         return ip_address.strip()
 
 
-def get_host_tags(attributes: dict) -> dict:
+def get_host_tags(attributes: Dict[str, str]) -> Dict[str, str]:
+    "Get attributes of the host from the given dict"
     return {attr: value for attr, value in attributes.items() if is_tag(attr)}
 
 
-def is_tag(name):
+def is_tag(name: str) -> str:
     """
     Is the name a 'tag'?
 
@@ -133,7 +138,7 @@ def is_tag(name):
     return name.lower().startswith("tag_")
 
 
-def create_hostlike_tags(tags_from_cmk):
+def create_hostlike_tags(tags_from_cmk: dict) -> Dict[str, List[str]]:
     """
     Create tags in a format that is similar to the ones
     present at hosts.
@@ -146,7 +151,7 @@ def create_hostlike_tags(tags_from_cmk):
     }
 
 
-def chunks(iterable, count):
+def chunks(iterable: Iterable, count: int):
     "Collect data into fixed-length chunks or blocks"
     # chunks('ABCDEFG', 3) --> ABC DEF Gxx"
     args = [iter(iterable)] * count
@@ -154,12 +159,11 @@ def chunks(iterable, count):
 
 
 @connector_config_registry.register
-class CSVConnectorConfig(ConnectorConfig):
+class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
 
     @classmethod
-    def name(cls):
-        # type: () -> str
+    def name(cls) -> str:
         return "csvconnector"
 
     def _connector_attributes_to_config(self) -> dict:
@@ -178,27 +182,27 @@ class CSVConnectorConfig(ConnectorConfig):
         }
 
     def _connector_attributes_from_config(self, connector_cfg: dict):
-        self.interval = connector_cfg["interval"]  # type: int
-        self.path = connector_cfg["path"]  # type: str
-        self.file_format = connector_cfg.get("file_format", "csv")  # type: str
-        self.folder = connector_cfg["folder"]  # type: str
-        self.host_filters = connector_cfg.get("host_filters", [])  # type: list
-        self.host_overtake_filters = connector_cfg.get(
+        self.interval: int = connector_cfg["interval"]  # pylint: disable=attribute-defined-outside-init
+        self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
+        self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
+        self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
+        self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
+        self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
-        )  # type: list
-        self.chunk_size = connector_cfg.get("chunk_size", 0)  # type: int
-        self.use_service_discovery = connector_cfg.get(
+        )
+        self.chunk_size: int = connector_cfg.get("chunk_size", 0)  # pylint: disable=attribute-defined-outside-init
+        self.use_service_discovery: bool = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "use_service_discovery", True
-        )  # type: bool
-        self.label_path_template = connector_cfg.get("label_path_template", "")
-        self.csv_delimiter = connector_cfg.get("csv_delimiter")
-        self.label_prefix = connector_cfg.get("label_prefix")
+        )
+        self.label_path_template: str = connector_cfg.get("label_path_template", "")  # pylint: disable=attribute-defined-outside-init
+        self.csv_delimiter: Optional[str] = connector_cfg.get("csv_delimiter")  # pylint: disable=attribute-defined-outside-init
+        self.label_prefix: Optional[str] = connector_cfg.get("label_prefix")  # pylint: disable=attribute-defined-outside-init
 
 
-class FileImporter:
+class FileImporter:  # pylint: disable=too-few-public-methods
     "Basic file importer"
 
-    def __init__(self, filepath):
+    def __init__(self, filepath: str):
         self.filepath = filepath
         self.hosts = None
         self.fields = None
@@ -209,16 +213,16 @@ class FileImporter:
         "This function will be called for importing the hosts."
 
 
-class CSVImporter(FileImporter):
+class CSVImporter(FileImporter):  # pylint: disable=too-few-public-methods
     "Import hosts from a CSV file"
 
-    def __init__(self, filepath, delimiter=None):
+    def __init__(self, filepath: str, delimiter: str = None):
         super().__init__(filepath)
 
         self.delimiter = delimiter
 
     def import_hosts(self):
-        with open(self.filepath) as cmdb_export:
+        with open(self.filepath) as cmdb_export:  # pylint: disable=unspecified-encoding
             if self.delimiter:
                 reader = csv.DictReader(cmdb_export, delimiter=self.delimiter)
             else:
@@ -235,7 +239,7 @@ class CSVImporter(FileImporter):
             pass
 
 
-class JSONImporter(FileImporter):
+class JSONImporter(FileImporter):  # pylint: disable=too-few-public-methods
     "Import hosts from a file with JSON"
 
     EXPECTED_HOST_NAMES = [
@@ -244,7 +248,7 @@ class JSONImporter(FileImporter):
     ]
 
     def import_hosts(self):
-        with open(self.filepath) as export_file:
+        with open(self.filepath) as export_file:  # pylint: disable=unspecified-encoding
             self.hosts = json.load(export_file)
 
         fields = set()
@@ -271,14 +275,14 @@ class BVQImporter(FileImporter):
         ("ipv6", "ipv6"),
     )
 
-    def __init__(self, filepath):
+    def __init__(self, filepath: str):
         super().__init__(filepath)
 
         # We know that this is our field
         self.hostname_field = "name"
 
     def import_hosts(self):
-        with open(self.filepath) as export_file:
+        with open(self.filepath) as export_file:  # pylint: disable=unspecified-encoding
             hosts = json.load(export_file)
 
         self.hosts = [
@@ -293,7 +297,9 @@ class BVQImporter(FileImporter):
 
         self.fields = fields
 
-    def format_host(self, host):
+    @classmethod
+    def format_host(cls, host: dict):
+        "Get a host object formatted as required for further processing"
         # BVQ sends more fields than we handle.
         # We currently exclude:
         #  - masterGroupingObjectIpv4
@@ -301,7 +307,7 @@ class BVQImporter(FileImporter):
 
         new_host = {"name": host["name"]}
 
-        for host_key, json_key in self.FIELD_MAPPING:
+        for host_key, json_key in cls.FIELD_MAPPING:
             try:
                 new_host[host_key] = host[json_key]
             except KeyError:
@@ -311,19 +317,16 @@ class BVQImporter(FileImporter):
 
 
 @connector_registry.register
-class CSVConnector(Connector):
+class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
     @classmethod
-    def name(cls):
-        # type: () -> str
+    def name(cls) -> str:
         return "csvconnector"
 
-    def _execution_interval(self):
-        # type: () -> int
+    def _execution_interval(self) -> int:
         """Number of seconds to sleep after each phase execution"""
         return self._connection_config.interval
 
-    def _execute_phase1(self):
-        # type: () -> Phase1Result
+    def _execute_phase1(self) -> Phase1Result:
         """Execute the first synchronization phase"""
         self._logger.info("Execute phase 1")
 
@@ -352,7 +355,7 @@ class CSVConnector(Connector):
             self._status,
         )
 
-    def _get_importer(self):
+    def _get_importer(self) -> FileImporter:
         "Get the correct importer based on the current config."
         file_format = self._connection_config.file_format
         if file_format == "csv":
@@ -364,12 +367,11 @@ class CSVConnector(Connector):
         elif file_format == "json":
             importer = JSONImporter(self._connection_config.path)
         else:
-            raise RuntimeError("Invalid file format {!r}".format(file_format))
+            raise RuntimeError(f"Invalid file format {file_format!r}")
 
         return importer
 
-    def _execute_phase2(self, phase1_result):
-        # type: (Phase1Result) -> None
+    def _execute_phase2(self, phase1_result: Phase1Result):
         """Execute the second synchronization phase
 
         It is executed based on the information provided by the first phase. This
@@ -384,8 +386,8 @@ class CSVConnector(Connector):
 
             if not isinstance(phase1_result.connector_object, FileConnectorHosts):
                 raise ValueError(
-                    "Got invalid connector object as phase 1 result: %r"
-                    % phase1_result.connector_object
+                    "Got invalid connector object as phase 1 result: "
+                    f"{phase1_result.connector_object!r}"
                 )
 
             cmdb_hosts = phase1_result.connector_object.hosts
@@ -493,8 +495,13 @@ class CSVConnector(Connector):
             else:
                 step.finish(_("No activation needed"))
 
-    def _partition_hosts(self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags):
-        # type: (List[Dict], Dict, str, Dict) -> Tuple[List, List, List]
+    def _partition_hosts(
+        self,
+        cmdb_hosts: List[dict],
+        cmk_hosts: Dict[str, dict],
+        hostname_field: str,
+        cmk_tags: Dict[str, List[str]],
+    ) -> Tuple[list, list, list]:
         """
         Partition the hosts into three groups:
 
@@ -512,7 +519,7 @@ class CSVConnector(Connector):
             re.compile(f) for f in self._connection_config.host_overtake_filters
         ]
 
-        def overtake_host(hostname):
+        def overtake_host(hostname: str) -> bool:
             if not host_overtake_filters:
                 return False
 
@@ -549,20 +556,22 @@ class CSVConnector(Connector):
 
         host_filters = [re.compile(f) for f in self._connection_config.host_filters]
 
-        def host_matches_filters(host):
+        def host_matches_filters(host: str) -> bool:
             if not host_filters:
                 return True
 
             return any(f.match(host) for f in host_filters)
 
-        def add_prefix_to_labels(labels: dict, prefix: Optional[str] = None):
+        def add_prefix_to_labels(
+            labels: Dict[str, str], prefix: Optional[str] = None
+        ) -> Dict[str, str]:
             prefix = self._connection_config.label_prefix
             if not prefix:
                 return labels
 
             return {f"{prefix}{key}": value for key, value in labels.items()}
 
-        def needs_modification(old, new):
+        def needs_modification(old: dict, new: dict) -> bool:
             for label, value in new.items():
                 try:
                     if old[label] != value:
@@ -579,7 +588,7 @@ class CSVConnector(Connector):
 
             return False
 
-        def create_host_tags(host_tags):
+        def create_host_tags(host_tags: dict) -> dict:
             tags = {tag_matcher.get_tag(key): value for key, value in host_tags.items()}
 
             for tag, choice in tags.items():
@@ -590,7 +599,7 @@ class CSVConnector(Connector):
 
             return tags
 
-        def ip_needs_modification(old_ip, new_ip):
+        def ip_needs_modification(old_ip: Optional[str], new_ip: Optional[str]) -> bool:
             return old_ip != new_ip
 
         def clean_cmk_attributes(host: dict) -> dict:
@@ -615,7 +624,7 @@ class CSVConnector(Connector):
             def get_dynamic_folder_path(
                 labels: dict, keys: List[str], depth: int
             ) -> str:
-                def replace_special_chars(string):
+                def replace_special_chars(string: str) -> str:
                     return string.replace(" ", "_")
 
                 path = generate_path_from_labels(labels, keys, depth)
@@ -632,7 +641,7 @@ class CSVConnector(Connector):
             )
         else:
             # Keeping the signature of the more complex function
-            def get_folder_path(_):
+            def get_folder_path(_) -> str:
                 return self._connection_config.folder
 
         def get_host_creation_tuple(
@@ -640,7 +649,7 @@ class CSVConnector(Connector):
             hostname_field: str,
             global_ident: str,
             label_prefix: Optional[str] = None,
-        ) -> tuple:
+        ) -> Tuple[str, str, dict]:
             labels = get_host_label(host, hostname_field)
             folder_path = get_folder_path(labels)
             prefixed_labels = add_prefix_to_labels(labels, label_prefix)
@@ -670,7 +679,7 @@ class CSVConnector(Connector):
             hostname_field: str,
             overtake_host: bool,
             label_prefix: Optional[str] = None,
-        ) -> tuple:
+        ) -> Tuple[str, dict, list]:
             hostname = normalize_hostname(cmdb_host[hostname_field])
             attributes = existing_host["attributes"]
 
@@ -700,7 +709,7 @@ class CSVConnector(Connector):
 
             overtake_host = hostname in hosts_to_overtake
 
-            def update_needed():
+            def update_needed() -> bool:
                 if overtake_host:
                     self._logger.debug("Host marked for overtake")
                     return True
@@ -808,7 +817,7 @@ class CSVConnector(Connector):
 
         return hosts_to_create, hosts_to_modify, hosts_to_delete
 
-    def _process_folders(self, hosts: List):
+    def _process_folders(self, hosts: List[dict]):
         # Folders are represented as a string.
         # Paths are written Unix style: 'folder/subfolder'
         host_folders = self._get_folders(hosts)
@@ -818,19 +827,19 @@ class CSVConnector(Connector):
         self._logger.debug("Creating the following folders: %s", folders_to_create)
         self._create_folders(sorted(folders_to_create))
 
-    def _get_existing_folders(self) -> Set:
+    def _get_existing_folders(self) -> Set[str]:
         all_folders = self._web_api._api_request("webapi.py?action=get_all_folders", {})
 
         return set(all_folders)
 
-    def _get_folders(self, hosts: List) -> Set:
+    def _get_folders(self, hosts: List[dict]) -> Set[str]:
         "Get the folders from the hosts to create."
         folders = {folder_path for (_, folder_path, _) in hosts}
         self._logger.debug("Found the following folders: %s", folders)
 
         return folders
 
-    def _create_folders(self, folders: List) -> List:
+    def _create_folders(self, folders: List[str]) -> List[str]:
         if not folders:
             self._logger.debug("No folders to create.")
             return []
@@ -850,11 +859,32 @@ class CSVConnector(Connector):
 
         # We want our folders to exist before processing the hosts
         self._activate_changes()
+        self._wait_for_folders(folders)
 
         return created_folders
 
-    def _create_new_hosts(self, hosts_to_create):
-        # type: (List) -> List[str]
+    def _wait_for_folders(self, folders: List[str]):
+        self._logger.debug("Waiting for folders to be created")
+        timeout = 60  # seconds
+        interval = 2  # seconds
+        start = time.time()
+
+        def are_folders_missing() -> bool:
+            existing_folders = self._get_existing_folders()
+            missing_folders = set(folders) - existing_folders
+            self._logger.debug("Missing the following folders: %s", ", ".join(missing_folders))
+            return bool(missing_folders)
+
+        def get_duration() -> int:
+            return time.time() - start
+
+        while are_folders_missing() and get_duration() < timeout:
+            time.sleep(interval)
+
+        if get_duration() > timeout:
+            self._logger.debug("Timed out after waiting %is for folders to be created.", timeout)
+
+    def _create_new_hosts(self, hosts_to_create: List[tuple]) -> List[str]:
         if not hosts_to_create:
             self._logger.debug("Nothing to create")
             return []
@@ -880,8 +910,7 @@ class CSVConnector(Connector):
 
         return created_host_names
 
-    def _create_hosts(self, hosts_to_create):
-        # type: (List) -> List[str]
+    def _create_hosts(self, hosts_to_create: List[tuple]) -> List[str]:
         self._logger.debug(
             "Creating %i hosts (%s)",
             len(hosts_to_create),
@@ -894,8 +923,7 @@ class CSVConnector(Connector):
 
         return result["succeeded_hosts"]
 
-    def _discover_hosts(self, host_names_to_discover):
-        # type: (List[str]) -> None
+    def _discover_hosts(self, host_names_to_discover: List[str]):
         self._logger.debug(
             "Discovering services on %i hosts (%s)",
             len(host_names_to_discover),
@@ -905,16 +933,15 @@ class CSVConnector(Connector):
         self._wait_for_bulk_discovery()
 
     def _wait_for_bulk_discovery(self):
-        # type: () -> None
         self._logger.debug("Waiting for bulk discovery to complete")
         timeout = 60  # seconds
         interval = 0.5  # seconds
         start = time.time()
 
-        def discovery_stopped():
+        def discovery_stopped() -> bool:
             return self._web_api.bulk_discovery_status()["is_active"] is False
 
-        def get_duration():
+        def get_duration() -> int:
             return time.time() - start
 
         while not discovery_stopped() and get_duration() < timeout:
@@ -930,8 +957,12 @@ class CSVConnector(Connector):
                 "Bulk discovery finished after %0.2f seconds", get_duration()
             )
 
-    def _modify_existing_hosts(self, hosts_to_modify):
-        # type: (List) -> List[str]
+    def _modify_existing_hosts(self, hosts_to_modify: List[tuple]) -> List[str]:
+        """
+        Modify the given hosts. Returns the IDs of modified hosts.
+
+        Will chunk the given hosts if necessary.
+        """
         if not hosts_to_modify:
             self._logger.debug("Nothing to modify")
             return []
@@ -951,8 +982,8 @@ class CSVConnector(Connector):
         self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
 
-    def _modify_hosts(self, hosts_to_modify):
-        # type: (List) -> List[str]
+    def _modify_hosts(self, hosts_to_modify: List[tuple]) -> List[str]:
+        "Modify the given hosts. Returns the IDs of modified hosts."
         self._logger.debug(
             "Modifying %i hosts (%s)",
             len(hosts_to_modify),
@@ -965,8 +996,7 @@ class CSVConnector(Connector):
 
         return result["succeeded_hosts"]
 
-    def _delete_hosts(self, hosts_to_delete):
-        # type: (List[str]) -> List[str]
+    def _delete_hosts(self, hosts_to_delete: List[str]) -> List[str]:
         """Delete hosts that have been created by this connection and are not existing anymore"""
         if not hosts_to_delete:
             self._logger.debug("Nothing to delete")
@@ -986,13 +1016,13 @@ class CSVConnector(Connector):
 
         return hosts_to_delete
 
-    def _activate_changes(self):
-        # type: () -> bool
+    def _activate_changes(self) -> bool:
+        "Activate changes. Returns a boolean representation of the success."
         self._logger.debug("Activating changes")
         try:
             self._web_api.activate_changes()
         except MKAPIError as error:
-            if "no changes to activate" in "%s" % error:
+            if "no changes to activate" in str(error):
                 self._logger.info(_("There was no change to activate"))
                 return False
             raise
@@ -1013,12 +1043,11 @@ class TagMatcher:
     * If no matching tag is found throw an error.
     """
 
-    def __init__(self, d):
-        self._original = d
-        self._normalized_names = {key.lower(): key for key in d}
+    def __init__(self, tags: dict):
+        self._original = tags
+        self._normalized_names = {key.lower(): key for key in tags}
 
-    def get_tag(self, name):
-        # type: (str) -> str
+    def get_tag(self, name: str) -> str:
         """
         Get the matching tag independent of used casing.
 
@@ -1032,21 +1061,25 @@ class TagMatcher:
         except KeyError as kerr:
             raise ValueError(f"No matching tag for {name!r} found!") from kerr
 
-    def is_possible_value(self, tag, value, raise_error=False):
+    def is_possible_value(
+        self, tag: str, value: str, raise_error: bool = False
+    ) -> bool:
         tag = self.get_tag(tag)
         values = self._original[tag]
         match_found = value in values
 
         if raise_error and not match_found:
             raise ValueError(
-                "{!r} is no possible choice for tag {}. "
-                "Valid tags are: {}".format(value, tag, ", ".join(values))
+                f"{value!r} is no possible choice for tag {tag}. "
+                "Valid tags are: {}".format(", ".join(values))
             )
 
         return match_found
 
 
-def generate_path_from_labels(labels: dict, keys: List[str], depth: int = 0) -> List:
+def generate_path_from_labels(
+    labels: dict, keys: List[str], depth: int = 0
+) -> List[str]:
     if not labels:
         if not depth:
             depth = 0
@@ -1061,13 +1094,13 @@ def generate_path_from_labels(labels: dict, keys: List[str], depth: int = 0) -> 
 
 
 class FileConnectorHosts:
-    def __init__(self, hosts, hostname_field, fieldnames):
+    def __init__(self, hosts: List[dict], hostname_field: str, fieldnames: List[str]):
         self.hosts = hosts
         self.hostname_field = hostname_field
         self.fieldnames = fieldnames
 
     @classmethod
-    def from_serialized_attributes(cls, serialized):
+    def from_serialized_attributes(cls, serialized: dict):
         return cls(
             serialized["hosts"], serialized["hostname_field"], serialized["fieldnames"]
         )
