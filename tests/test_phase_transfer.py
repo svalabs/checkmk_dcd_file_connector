@@ -1,4 +1,4 @@
-from csvconnector import FileConnectorHosts
+from fileconnector import FileConnectorHosts
 import pytest
 
 

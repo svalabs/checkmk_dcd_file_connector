@@ -1,6 +1,6 @@
 import os.path
 
-from csvconnector import BVQImporter
+from fileconnector import BVQImporter
 
 import pytest
 

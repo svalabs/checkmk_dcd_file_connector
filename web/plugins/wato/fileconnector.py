@@ -11,10 +11,26 @@
 # |                                                            |
 # +------------------------------------------------------------+
 #
-# Copyright (C) 2021-2022 Niko Wenselowski <niko.wenselowski@sva.de>
-#                         for SVA System Vertrieb Alexander GmbH
+# File Connector is a no-code DCD connector for checkmk.
+#
+# Copyright (C) 2021-2022 SVA System Vertrieb Alexander GmbH
+#                         Niko Wenselowski <niko.wenselowski@sva.de>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-WATO configuration module for CSVConnector.
+WATO configuration module for File Connector.
 """
 
 import os.path
@@ -44,22 +60,19 @@ from cmk.gui.valuespec import (  # pylint: disable=import-error
 
 
 @connector_parameters_registry.register
-class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
+class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
 
     @classmethod
-    def name(cls):  # pylint: disable=missing-function-docstring
-        # type: () -> str
-        return "csvconnector"
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
+        return "fileconnector"
 
     @classmethod
-    def title(cls):  # pylint: disable=missing-function-docstring
-        # type: () -> str
-        return _("CSV import")
+    def title(cls) -> str:  # pylint: disable=missing-function-docstring
+        return _("File import")
 
     @classmethod
-    def description(cls):  # pylint: disable=missing-function-docstring
-        # type: () -> str
-        return _("Connector for importing data from a CSV, JSON or BVQ file.")
+    def description(cls) -> str:  # pylint: disable=missing-function-docstring
+        return _("Connector for importing hosts from a CSV, JSON or BVQ file.")
 
     def valuespec(self):  # pylint: disable=missing-function-docstring
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
@@ -81,6 +94,21 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     allow_empty=False,
                     validate=self.validate_csv,
                 )),
+                ("file_format", Alternative(
+                    title=_("Data Format"),
+                    elements=[csv_value, json_value, bvq_value],
+                    default_value=csv_value,
+                    help=_(
+                        "Select the data format for the file."
+                    ),
+                )),
+                ("csv_delimiter", TextInput(
+                    title=_("CSV delimiter"),
+                    default_value=",",
+                    help=_(
+                        "The delimiter used to separate fields in a csv file."
+                    ),
+                )),
                 ("folder", FullPathFolderChoice(
                     title=_("Create hosts in"),
                     help=_("All hosts created by this connection will be "
@@ -99,9 +127,9 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     title=_("Take over existing hosts"),
                     help=_(
                         "Take over already existing hosts with names that "
-                        "match one of these regular expressions. This will not"
-                        "take over hosts handled by foreign connections or "
-                        "plugins. Hosts that have been took over will be "
+                        "match one of these regular expressions. This will "
+                        "not take over hosts handled by foreign connections "
+                        "or plugins. Hosts that have been took over will be "
                         "deleted once they vanish from the import file."),
                     orientation="horizontal",
                     valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
@@ -124,21 +152,6 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     title=_("Use service discovery"),
                     help=_(
                         "Controls if service discovery is triggered for new hosts."
-                    ),
-                )),
-                ("file_format", Alternative(
-                    title=_("Data Format"),
-                    elements=[csv_value, json_value, bvq_value],
-                    default_value=csv_value,
-                    help=_(
-                        "Select the data format for the file."
-                    ),
-                )),
-                ("csv_delimiter", TextInput(
-                    title=_("CSV delimiter"),
-                    default_value=",",
-                    help=_(
-                        "The delimiter used to separate fields in a csv file."
                     ),
                 )),
                 ("label_prefix", TextInput(
@@ -168,6 +181,13 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                         "slash (/). "
                     ),
                     validate=self.validate_label_path_template,
+                )),
+                ("lowercase_everything", Checkbox(
+                    default_value=False,
+                    title=_("Lowercase everything"),
+                    help=_(
+                        "This results in all imported data being lowercased."
+                    ),
                 )),
             ],
             optional_keys=[

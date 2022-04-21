@@ -1,4 +1,4 @@
-from csvconnector import generate_path_from_labels, FOLDER_PLACEHOLDER
+from fileconnector import generate_path_from_labels, FOLDER_PLACEHOLDER
 
 import pytest
 

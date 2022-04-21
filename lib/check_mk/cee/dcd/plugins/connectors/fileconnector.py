@@ -11,10 +11,26 @@
 # |                                                            |
 # +------------------------------------------------------------+
 #
-# Copyright (C) 2021-2022 Niko Wenselowski <niko.wenselowski@sva.de>
-#                         for SVA System Vertrieb Alexander GmbH
+# File Connector is a no-code DCD connector for checkmk.
+#
+# Copyright (C) 2021-2022 SVA System Vertrieb Alexander GmbH
+#                         Niko Wenselowski <niko.wenselowski@sva.de>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-CSVConnector import logic.
+File Connector import logic.
 """
 
 import csv
@@ -159,12 +175,12 @@ def chunks(iterable: Iterable, count: int):
 
 
 @connector_config_registry.register
-class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
+class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
 
     @classmethod
-    def name(cls) -> str:
-        return "csvconnector"
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
+        return "fileconnector"
 
     def _connector_attributes_to_config(self) -> dict:
         return {
@@ -172,6 +188,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
             "path": self.path,
             "file_format": self.file_format,
             "folder": self.folder,
+            "lowercase_everything": self.lowercase_everything,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
@@ -186,6 +203,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
         self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
+        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)  # pylint: disable=attribute-defined-outside-init
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -204,9 +222,9 @@ class FileImporter:  # pylint: disable=too-few-public-methods
 
     def __init__(self, filepath: str):
         self.filepath = filepath
-        self.hosts = None
-        self.fields = None
-        self.hostname_field = None
+        self.hosts: Optional[dict] = None
+        self.fields: Optional[List[str]] = None
+        self.hostname_field: Optional[str] = None
 
     @abstractmethod
     def import_hosts(self):
@@ -316,11 +334,65 @@ class BVQImporter(FileImporter):
         return new_host
 
 
+class LowercaseImporter:
+    "This modifies an importer to only return lowercased values"
+
+    def __init__(self, importer):
+        self._importer = importer
+
+    @property
+    def filepath(self):  # pylint: disable=missing-function-docstring
+        return self._importer.filepath
+
+    @property
+    def hosts(self):  # pylint: disable=missing-function-docstring
+        hosts = self._importer.hosts
+        if hosts is None:
+            return None
+
+        lowercase = self.lowercase
+
+        def lowercase_host(host):
+            return {key.lower(): lowercase(value) for key, value in host.items()}
+
+        return [lowercase_host(host) for host in hosts]
+
+    @property
+    def fields(self):  # pylint: disable=missing-function-docstring
+        fields = self._importer.fields
+        if fields is None:
+            return None
+
+        return [self.lowercase(fieldname) for fieldname in fields]
+
+    @property
+    def hostname_field(self):  # pylint: disable=missing-function-docstring
+        hostname_field = self._importer.hostname_field
+        if hostname_field is None:
+            return None
+
+        return hostname_field.lower()
+
+    def import_hosts(self):
+        "Import hosts through the importer"
+        return self._importer.import_hosts()
+
+    @staticmethod
+    def lowercase(value):
+        "Convert the given value to lowercase if possible"
+        if isinstance(value, (int, float, bool)):
+            return value
+
+        return value.lower()
+
+
 @connector_registry.register
-class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
+class FileConnector(Connector):  # pylint: disable=too-few-public-methods
+    "The connector that manages the importing"
+
     @classmethod
-    def name(cls) -> str:
-        return "csvconnector"
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
+        return "fileconnector"
 
     def _execution_interval(self) -> int:
         """Number of seconds to sleep after each phase execution"""
@@ -368,6 +440,10 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
             importer = JSONImporter(self._connection_config.path)
         else:
             raise RuntimeError(f"Invalid file format {file_format!r}")
+
+        if self._connection_config.lowercase_everything:
+            self._logger.info("All imported values will be lowercased")
+            importer = LowercaseImporter(importer)
 
         return importer
 
@@ -1064,6 +1140,8 @@ class TagMatcher:
     def is_possible_value(
         self, tag: str, value: str, raise_error: bool = False
     ) -> bool:
+        "Check if the value is possible for the given tag"
+
         tag = self.get_tag(tag)
         values = self._original[tag]
         match_found = value in values
@@ -1080,6 +1158,7 @@ class TagMatcher:
 def generate_path_from_labels(
     labels: dict, keys: List[str], depth: int = 0
 ) -> List[str]:
+    "Generate a path from the given labels"
     if not labels:
         if not depth:
             depth = 0
@@ -1094,6 +1173,8 @@ def generate_path_from_labels(
 
 
 class FileConnectorHosts:
+    "Class used for exchanging data between different stages"
+
     def __init__(self, hosts: List[dict], hostname_field: str, fieldnames: List[str]):
         self.hosts = hosts
         self.hostname_field = hostname_field
@@ -1101,11 +1182,13 @@ class FileConnectorHosts:
 
     @classmethod
     def from_serialized_attributes(cls, serialized: dict):
+        "Generate an instance from serialized attributes"
         return cls(
             serialized["hosts"], serialized["hostname_field"], serialized["fieldnames"]
         )
 
     def _serialize_attributes(self) -> dict:
+        "Serialize class attributes"
         return {
             "hosts": self.hosts,
             "hostname_field": self.hostname_field,
@@ -1113,9 +1196,7 @@ class FileConnectorHosts:
         }
 
     def __repr__(self) -> str:
-        return "%s(%r, %r, %r)" % (
-            self.__class__.__name__,
-            self.hosts,
-            self.hostname_field,
-            self.fieldnames,
+        return (
+            f"{self.__class__.__name__}({self.hosts!r}, "
+            f"{self.hostname_field!r}, {self.fieldnames!r})"
         )

@@ -1,9 +1,9 @@
 import pytest
-import csvconnector
+import fileconnector
 
 
 def test_chunking(chunk_size=3):
-    for chunk in csvconnector.chunks(range(10), chunk_size):
+    for chunk in fileconnector.chunks(range(10), chunk_size):
         assert len(chunk) == chunk_size
 
 
@@ -12,7 +12,7 @@ def test_chunking_fills_with_none():
     original_iter = list(range(10))
     assert len(original_iter) % 3 != 0
 
-    for index, chunk in enumerate(csvconnector.chunks(original_iter, chunk_size)):
+    for index, chunk in enumerate(fileconnector.chunks(original_iter, chunk_size)):
         print(chunk)
         if index != chunk_size:
             assert len([x for x in chunk if x is not None]) == chunk_size
