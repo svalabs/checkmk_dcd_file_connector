@@ -1,10 +1,6 @@
 # CSV Import
 
 Import hosts from a file in CSV, JSON or BVQ format.
-
-[![pipeline status](https://codehub.sva.de/ops_mon/dev/check_mk-csv-connector/badges/master/pipeline.svg)](https://codehub.sva.de/ops_mon/dev/check_mk-csv-connector/-/commits/master)
-[![coverage report](https://codehub.sva.de/ops_mon/dev/check_mk-csv-connector/badges/master/coverage.svg)](https://codehub.sva.de/ops_mon/dev/check_mk-csv-connector/-/commits/master)
-
 This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.checkmk.com/latest/de/dcd.html) feature.
 
 ## Usage
