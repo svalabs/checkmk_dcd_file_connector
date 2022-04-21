@@ -187,6 +187,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
             "path": self.path,
             "file_format": self.file_format,
             "folder": self.folder,
+            "lowercase_everything": self.lowercase_everything,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
@@ -201,6 +202,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
         self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
+        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -219,9 +221,9 @@ class FileImporter:  # pylint: disable=too-few-public-methods
 
     def __init__(self, filepath: str):
         self.filepath = filepath
-        self.hosts = None
-        self.fields = None
-        self.hostname_field = None
+        self.hosts: Optional[dict] = None
+        self.fields: Optional[List[str]] = None
+        self.hostname_field: Optional[str] = None
 
     @abstractmethod
     def import_hosts(self):
@@ -331,6 +333,56 @@ class BVQImporter(FileImporter):
         return new_host
 
 
+class LowercaseImporter:
+    "This modifies an importer to only return lowercased values"
+
+    def __init__(self, importer):
+        self._importer = importer
+
+    @property
+    def filepath(self):
+        return self._importer.filepath
+
+    @property
+    def hosts(self):
+        hosts = self._importer.hosts
+        if hosts is None:
+            return None
+
+        lowercase = self.lowercase
+
+        def lowercase_host(host):
+            return {key.lower(): lowercase(value) for key, value in host.items()}
+
+        return [lowercase_host(host) for host in hosts]
+
+    @property
+    def fields(self):
+        fields = self._importer.fields
+        if fields is None:
+            return None
+
+        return [self.lowercase(fieldname) for fieldname in fields]
+
+    @property
+    def hostname_field(self):
+        hostname_field = self._importer.hostname_field
+        if hostname_field is None:
+            return None
+
+        return hostname_field.lower()
+
+    def import_hosts(self):
+        return self._importer.import_hosts()
+
+    @staticmethod
+    def lowercase(value):
+        if isinstance(value, (int, float, bool)):
+            return value
+
+        return value.lower()
+
+
 @connector_registry.register
 class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
     @classmethod
@@ -383,6 +435,10 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
             importer = JSONImporter(self._connection_config.path)
         else:
             raise RuntimeError(f"Invalid file format {file_format!r}")
+
+        if self._connection_config.lowercase_everything:
+            self._logger.info("All imported values will be lowercased")
+            importer = LowercaseImporter(importer)
 
         return importer
 

@@ -184,6 +184,13 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     ),
                     validate=self.validate_label_path_template,
                 )),
+                ("lowercase_everything", Checkbox(
+                    default_value=False,
+                    title=_("Lowercase everything"),
+                    help=_(
+                        "This results in all imported data being lowercased."
+                    ),
+                )),
             ],
             optional_keys=[
                 "host_filters",
