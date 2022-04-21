@@ -1,5 +1,5 @@
 import pytest
-import csvconnector
+import fileconnector
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def test_getting_host_label(hostname_field):
         'another_key': 'AS df Gh',
     }
 
-    assert expected_label == csvconnector.get_host_label(host, hostname_field)
+    assert expected_label == fileconnector.get_host_label(host, hostname_field)
 
 
 @pytest.mark.parametrize("key, expected_key, value", (
@@ -33,7 +33,7 @@ def test_getting_host_label_transformation(hostname_field, key, expected_key, va
 
     expected_label = {expected_key: value}
 
-    assert expected_label == csvconnector.get_host_label(host, hostname_field)
+    assert expected_label == fileconnector.get_host_label(host, hostname_field)
 
 
 @pytest.mark.parametrize("attributes, expected_result",[
@@ -47,7 +47,7 @@ def test_getting_host_label_ignores_tags(attributes, expected_result):
     host = {hostname_field: 'testhost'}
     host.update(attributes)
 
-    assert expected_result == csvconnector.get_host_label(host, hostname_field)
+    assert expected_result == fileconnector.get_host_label(host, hostname_field)
 
 @pytest.mark.parametrize("hostname, expected_hostname", [
     ('ABcd', 'abcd'),
@@ -55,7 +55,7 @@ def test_getting_host_label_ignores_tags(attributes, expected_result):
     ('my host', 'my_host'),
 ])
 def test_normalize_hostname(hostname, expected_hostname):
-    assert expected_hostname == csvconnector.normalize_hostname(hostname)
+    assert expected_hostname == fileconnector.normalize_hostname(hostname)
 
 
 @pytest.mark.parametrize("value", [
@@ -66,14 +66,14 @@ def test_normalize_hostname(hostname, expected_hostname):
     pytest.param('something_tag_thingy', marks=pytest.mark.xfail),
 ])
 def test_is_tag(value):
-    assert csvconnector.is_tag(value)
+    assert fileconnector.is_tag(value)
 
 
 @pytest.mark.parametrize("host, expected_tags", [
     ({"name": "test1", "label_foo": "bar", "tag_cloud": "AWS"}, {"tag_cloud": "AWS"}),
 ])
 def test_getting_host_tags(host, expected_tags):
-    assert csvconnector.get_host_tags(host) == expected_tags
+    assert fileconnector.get_host_tags(host) == expected_tags
 
 
 @pytest.mark.parametrize("tags_from_api, expected_tags", [
@@ -82,7 +82,7 @@ def test_getting_host_tags(host, expected_tags):
     {"tag_agent": ["cmk-agent", "all-agents", "special-agents","no-agent",],"tag_piggyback": ["auto-piggyback","piggyback","no-piggyback",],"tag_snmp_ds": ["no-snmp","snmp-v2","snmp-v1",],"tag_address_family": ["ip-v4-only","ip-v6-only","ip-v4v6","no-ip"]})
 ])
 def test_create_hostlike_tags(tags_from_api, expected_tags):
-    assert expected_tags == csvconnector.create_hostlike_tags(tags_from_api)
+    assert expected_tags == fileconnector.create_hostlike_tags(tags_from_api)
 
 
 @pytest.mark.parametrize("host, expected_ip", [
@@ -94,7 +94,7 @@ def test_create_hostlike_tags(tags_from_api, expected_tags):
     ({"name": "vigilant", "ip": "1.2.3.4 , 5.6.7.8"}, "1.2.3.4"),
 ])
 def test_get_ip_address(host, expected_ip):
-    assert expected_ip == csvconnector.get_ip_address(host)
+    assert expected_ip == fileconnector.get_ip_address(host)
 
 
 def test_getting_host_attributes():
@@ -110,12 +110,12 @@ def test_getting_host_attributes():
         "attr_labels": {"first": "1"}
     }
 
-    host = csvconnector.get_host_attributes(host_dict)
+    host = fileconnector.get_host_attributes(host_dict)
 
     assert "unprefixed" not in host
     assert "hostname" not in host
     for key in host:
-        assert key not in csvconnector.BUILTIN_ATTRIBUTES
+        assert key not in fileconnector.BUILTIN_ATTRIBUTES
         assert not key.startswith("tag_")
         assert not key.startswith("label_")
 

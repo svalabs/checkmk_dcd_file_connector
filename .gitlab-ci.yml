@@ -6,7 +6,7 @@ stages:
 
 
 variables:
-  MKP_FILENAME: 'csvconnector-${CI_COMMIT_REF_NAME}.mkp'
+  MKP_FILENAME: 'fileconnector-${CI_COMMIT_REF_NAME}.mkp'
 
 
 pylint:
@@ -16,7 +16,7 @@ pylint:
   before_script:
     - pip install pylint
   script:
-    - pylint lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
+    - pylint lib/check_mk/cee/dcd/plugins/connectors/fileconnector.py web/plugins/wato/fileconnector.py
   allow_failure: true
 
 
@@ -27,7 +27,7 @@ flake8:
   before_script:
     - pip install flake8
   script:
-    - flake8 lib/check_mk/cee/dcd/plugins/connectors/csvconnector.py web/plugins/wato/csvconnector.py
+    - flake8 lib/check_mk/cee/dcd/plugins/connectors/fileconnector.py web/plugins/wato/fileconnector.py
   allow_failure: true
 
 

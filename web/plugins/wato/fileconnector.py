@@ -14,7 +14,7 @@
 # Copyright (C) 2021-2022 Niko Wenselowski <niko.wenselowski@sva.de>
 #                         for SVA System Vertrieb Alexander GmbH
 """
-WATO configuration module for CSVConnector.
+WATO configuration module for File Connector.
 """
 
 import os.path
@@ -44,17 +44,17 @@ from cmk.gui.valuespec import (  # pylint: disable=import-error
 
 
 @connector_parameters_registry.register
-class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
+class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
 
     @classmethod
     def name(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
-        return "csvconnector"
+        return "fileconnector"
 
     @classmethod
     def title(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
-        return _("CSV import")
+        return _("File import")
 
     @classmethod
     def description(cls):  # pylint: disable=missing-function-docstring

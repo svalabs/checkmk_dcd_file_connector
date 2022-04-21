@@ -1,4 +1,4 @@
-from csvconnector import TagMatcher
+from fileconnector import TagMatcher
 
 import pytest
 

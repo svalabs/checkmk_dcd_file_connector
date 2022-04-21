@@ -14,7 +14,7 @@
 # Copyright (C) 2021-2022 Niko Wenselowski <niko.wenselowski@sva.de>
 #                         for SVA System Vertrieb Alexander GmbH
 """
-CSVConnector import logic.
+File Connector import logic.
 """
 
 import csv
@@ -159,12 +159,12 @@ def chunks(iterable: Iterable, count: int):
 
 
 @connector_config_registry.register
-class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
+class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
 
     @classmethod
     def name(cls) -> str:
-        return "csvconnector"
+        return "fileconnector"
 
     def _connector_attributes_to_config(self) -> dict:
         return {
@@ -317,10 +317,10 @@ class BVQImporter(FileImporter):
 
 
 @connector_registry.register
-class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
+class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     @classmethod
     def name(cls) -> str:
-        return "csvconnector"
+        return "fileconnector"
 
     def _execution_interval(self) -> int:
         """Number of seconds to sleep after each phase execution"""

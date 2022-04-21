@@ -1,4 +1,4 @@
-# CSV Import
+# File Connector
 
 Import hosts from a file in CSV, JSON or BVQ format.
 
