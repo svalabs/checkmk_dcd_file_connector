@@ -13,7 +13,8 @@
 #
 # File Connector is a no-code DCD connector for checkmk.
 #
-# Copyright (C) 2021-2022 SVA System Vertrieb Alexander GmbH, Niko Wenselowski <niko.wenselowski@sva.de>
+# Copyright (C) 2021-2022 SVA System Vertrieb Alexander GmbH
+#                         Niko Wenselowski <niko.wenselowski@sva.de>
 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
