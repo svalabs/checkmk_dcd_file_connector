@@ -179,7 +179,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
     """Loading the persisted connection config"""
 
     @classmethod
-    def name(cls) -> str:
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
         return "csvconnector"
 
     def _connector_attributes_to_config(self) -> dict:
@@ -203,7 +203,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
         self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
-        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)
+        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)  # pylint: disable=attribute-defined-outside-init
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -341,11 +341,11 @@ class LowercaseImporter:
         self._importer = importer
 
     @property
-    def filepath(self):
+    def filepath(self):  # pylint: disable=missing-function-docstring
         return self._importer.filepath
 
     @property
-    def hosts(self):
+    def hosts(self):  # pylint: disable=missing-function-docstring
         hosts = self._importer.hosts
         if hosts is None:
             return None
@@ -358,7 +358,7 @@ class LowercaseImporter:
         return [lowercase_host(host) for host in hosts]
 
     @property
-    def fields(self):
+    def fields(self):  # pylint: disable=missing-function-docstring
         fields = self._importer.fields
         if fields is None:
             return None
@@ -366,7 +366,7 @@ class LowercaseImporter:
         return [self.lowercase(fieldname) for fieldname in fields]
 
     @property
-    def hostname_field(self):
+    def hostname_field(self):  # pylint: disable=missing-function-docstring
         hostname_field = self._importer.hostname_field
         if hostname_field is None:
             return None
