@@ -179,7 +179,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
     """Loading the persisted connection config"""
 
     @classmethod
-    def name(cls) -> str:
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
         return "csvconnector"
 
     def _connector_attributes_to_config(self) -> dict:
@@ -203,7 +203,7 @@ class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-met
         self.path: str = connector_cfg["path"]  # pylint: disable=attribute-defined-outside-init
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
-        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)
+        self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)  # pylint: disable=attribute-defined-outside-init
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -341,11 +341,11 @@ class LowercaseImporter:
         self._importer = importer
 
     @property
-    def filepath(self):
+    def filepath(self):  # pylint: disable=missing-function-docstring
         return self._importer.filepath
 
     @property
-    def hosts(self):
+    def hosts(self):  # pylint: disable=missing-function-docstring
         hosts = self._importer.hosts
         if hosts is None:
             return None
@@ -358,7 +358,7 @@ class LowercaseImporter:
         return [lowercase_host(host) for host in hosts]
 
     @property
-    def fields(self):
+    def fields(self):  # pylint: disable=missing-function-docstring
         fields = self._importer.fields
         if fields is None:
             return None
@@ -366,7 +366,7 @@ class LowercaseImporter:
         return [self.lowercase(fieldname) for fieldname in fields]
 
     @property
-    def hostname_field(self):
+    def hostname_field(self):  # pylint: disable=missing-function-docstring
         hostname_field = self._importer.hostname_field
         if hostname_field is None:
             return None
@@ -374,10 +374,12 @@ class LowercaseImporter:
         return hostname_field.lower()
 
     def import_hosts(self):
+        "Import hosts through the importer"
         return self._importer.import_hosts()
 
     @staticmethod
     def lowercase(value):
+        "Convert the given value to lowercase if possible"
         if isinstance(value, (int, float, bool)):
             return value
 
@@ -386,8 +388,10 @@ class LowercaseImporter:
 
 @connector_registry.register
 class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
+    "The connector that manages the importing"
+
     @classmethod
-    def name(cls) -> str:
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
         return "csvconnector"
 
     def _execution_interval(self) -> int:
@@ -1136,6 +1140,8 @@ class TagMatcher:
     def is_possible_value(
         self, tag: str, value: str, raise_error: bool = False
     ) -> bool:
+        "Check if the value is possible for the given tag"
+
         tag = self.get_tag(tag)
         values = self._original[tag]
         match_found = value in values
@@ -1152,6 +1158,7 @@ class TagMatcher:
 def generate_path_from_labels(
     labels: dict, keys: List[str], depth: int = 0
 ) -> List[str]:
+    "Generate a path from the given labels"
     if not labels:
         if not depth:
             depth = 0
@@ -1166,6 +1173,8 @@ def generate_path_from_labels(
 
 
 class FileConnectorHosts:
+    "Class used for exchanging data between different stages"
+
     def __init__(self, hosts: List[dict], hostname_field: str, fieldnames: List[str]):
         self.hosts = hosts
         self.hostname_field = hostname_field
@@ -1173,11 +1182,13 @@ class FileConnectorHosts:
 
     @classmethod
     def from_serialized_attributes(cls, serialized: dict):
+        "Generate an instance from serialized attributes"
         return cls(
             serialized["hosts"], serialized["hostname_field"], serialized["fieldnames"]
         )
 
     def _serialize_attributes(self) -> dict:
+        "Serialize class attributes"
         return {
             "hosts": self.hosts,
             "hostname_field": self.hostname_field,
@@ -1185,9 +1196,7 @@ class FileConnectorHosts:
         }
 
     def __repr__(self) -> str:
-        return "%s(%r, %r, %r)" % (
-            self.__class__.__name__,
-            self.hosts,
-            self.hostname_field,
-            self.fieldnames,
+        return (
+            f"{self.__class__.__name__}({self.hosts!r}, "
+            f"{self.hostname_field!r}, {self.fieldnames!r})"
         )
