@@ -59,7 +59,7 @@ class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-c
     @classmethod
     def description(cls):  # pylint: disable=missing-function-docstring
         # type: () -> str
-        return _("Connector for importing data from a CSV, JSON or BVQ file.")
+        return _("Connector for importing hosts from a CSV, JSON or BVQ file.")
 
     def valuespec(self):  # pylint: disable=missing-function-docstring
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")
