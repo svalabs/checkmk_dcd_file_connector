@@ -28,6 +28,10 @@ If you prefix the column with `attr_` the contents will be handled as an attribu
 
 Without a given prefix the columns will be treated as tags by default.
 
+## File Formats
+
+The importer supports various file formats.
+
 ### CSV file
 
 The first column in the CSV is expected to contain the hostname.
