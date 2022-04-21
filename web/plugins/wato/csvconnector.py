@@ -114,9 +114,9 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                     title=_("Take over existing hosts"),
                     help=_(
                         "Take over already existing hosts with names that "
-                        "match one of these regular expressions. This will not"
-                        "take over hosts handled by foreign connections or "
-                        "plugins. Hosts that have been took over will be "
+                        "match one of these regular expressions. This will "
+                        "not take over hosts handled by foreign connections "
+                        "or plugins. Hosts that have been took over will be "
                         "deleted once they vanish from the import file."),
                     orientation="horizontal",
                     valuespec=RegExpUnicode(mode=RegExpUnicode.prefix,),
