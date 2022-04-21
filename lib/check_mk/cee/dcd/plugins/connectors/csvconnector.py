@@ -1185,9 +1185,7 @@ class FileConnectorHosts:
         }
 
     def __repr__(self) -> str:
-        return "%s(%r, %r, %r)" % (
-            self.__class__.__name__,
-            self.hosts,
-            self.hostname_field,
-            self.fieldnames,
+        return (
+            f"{self.__class__.__name__}({self.hosts!r}, "
+            f"{self.hostname_field!r}, {self.fieldnames!r})"
         )
