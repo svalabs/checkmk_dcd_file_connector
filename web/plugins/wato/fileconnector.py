@@ -94,6 +94,21 @@ class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-c
                     allow_empty=False,
                     validate=self.validate_csv,
                 )),
+                ("file_format", Alternative(
+                    title=_("Data Format"),
+                    elements=[csv_value, json_value, bvq_value],
+                    default_value=csv_value,
+                    help=_(
+                        "Select the data format for the file."
+                    ),
+                )),
+                ("csv_delimiter", TextInput(
+                    title=_("CSV delimiter"),
+                    default_value=",",
+                    help=_(
+                        "The delimiter used to separate fields in a csv file."
+                    ),
+                )),
                 ("folder", FullPathFolderChoice(
                     title=_("Create hosts in"),
                     help=_("All hosts created by this connection will be "
@@ -137,21 +152,6 @@ class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-c
                     title=_("Use service discovery"),
                     help=_(
                         "Controls if service discovery is triggered for new hosts."
-                    ),
-                )),
-                ("file_format", Alternative(
-                    title=_("Data Format"),
-                    elements=[csv_value, json_value, bvq_value],
-                    default_value=csv_value,
-                    help=_(
-                        "Select the data format for the file."
-                    ),
-                )),
-                ("csv_delimiter", TextInput(
-                    title=_("CSV delimiter"),
-                    default_value=",",
-                    help=_(
-                        "The delimiter used to separate fields in a csv file."
                     ),
                 )),
                 ("label_prefix", TextInput(
