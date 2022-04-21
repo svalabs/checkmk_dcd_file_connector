@@ -334,14 +334,9 @@ class LowercaseImporter:
         if hosts is None:
             return None
 
-        def lowercase(value):
-            if isinstance(value, (int, float, bool)):
-                return value
-
-            return value.lower()
+        lowercase = self.lowercase
 
         def lowercase_host(host):
-
             return {key.lower(): lowercase(value) for key, value in host.items()}
 
         return [lowercase_host(host) for host in hosts]
@@ -352,7 +347,7 @@ class LowercaseImporter:
         if fields is None:
             return None
 
-        return [fieldname.lower() for fieldname in fields]
+        return [self.lowercase(fieldname) for fieldname in fields]
 
     @property
     def hostname_field(self):
@@ -364,6 +359,13 @@ class LowercaseImporter:
 
     def import_hosts(self):
         return self._importer.import_hosts()
+
+    @staticmethod
+    def lowercase(value):
+        if isinstance(value, (int, float, bool)):
+            return value
+
+        return value.lower()
 
 
 @connector_registry.register
