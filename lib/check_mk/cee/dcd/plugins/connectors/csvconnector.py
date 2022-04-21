@@ -388,6 +388,8 @@ class LowercaseImporter:
 
 @connector_registry.register
 class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
+    "The connector that manages the importing"
+
     @classmethod
     def name(cls) -> str:
         return "csvconnector"
