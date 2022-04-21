@@ -71,7 +71,7 @@ You can also have a look at the [log file](https://docs.checkmk.com/latest/en/dc
 
 If problems occur after an update it is recommend run an `omd restart` once.
 
-It is also recommended to execute `omd restart` if you happen to stumble upon an error message like `Skipping connection 'import_hosts' because of unknown connector type 'fileconnector'`
+It is also recommended to execute `omd restart` if you happen to stumble upon an error message like `Skipping connection 'import_hosts' because of unknown connector type 'fileconnector'` or `Failed to get the status from DCD (The connection 'con_1' does not exist)`.
 
 ## Building
 
