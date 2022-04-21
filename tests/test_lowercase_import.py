@@ -17,7 +17,6 @@ class FakeImporter(FileImporter):
         "This function will be called for importing the hosts."
         self.fields = ["HostName", "IpAddress", "Server_LOC"]
         self.hostname_field = "HostName"
-        # TODO: Add hosts
 
         self.hosts = [
             {
