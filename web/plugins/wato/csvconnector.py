@@ -63,18 +63,15 @@ from cmk.gui.valuespec import (  # pylint: disable=import-error
 class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
 
     @classmethod
-    def name(cls):  # pylint: disable=missing-function-docstring
-        # type: () -> str
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
         return "csvconnector"
 
     @classmethod
-    def title(cls):  # pylint: disable=missing-function-docstring
-        # type: () -> str
+    def title(cls) -> str:  # pylint: disable=missing-function-docstring
         return _("CSV import")
 
     @classmethod
-    def description(cls):  # pylint: disable=missing-function-docstring
-        # type: () -> str
+    def description(cls) -> str:  # pylint: disable=missing-function-docstring
         return _("Connector for importing data from a CSV, JSON or BVQ file.")
 
     def valuespec(self):  # pylint: disable=missing-function-docstring
