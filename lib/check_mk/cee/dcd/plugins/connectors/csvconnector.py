@@ -374,10 +374,12 @@ class LowercaseImporter:
         return hostname_field.lower()
 
     def import_hosts(self):
+        "Import hosts through the importer"
         return self._importer.import_hosts()
 
     @staticmethod
     def lowercase(value):
+        "Convert the given value to lowercase if possible"
         if isinstance(value, (int, float, bool)):
             return value
 
@@ -1136,6 +1138,8 @@ class TagMatcher:
     def is_possible_value(
         self, tag: str, value: str, raise_error: bool = False
     ) -> bool:
+        "Check if the value is possible for the given tag"
+
         tag = self.get_tag(tag)
         values = self._original[tag]
         match_found = value in values
@@ -1152,6 +1156,7 @@ class TagMatcher:
 def generate_path_from_labels(
     labels: dict, keys: List[str], depth: int = 0
 ) -> List[str]:
+    "Generate a path from the given labels"
     if not labels:
         if not depth:
             depth = 0
@@ -1166,6 +1171,8 @@ def generate_path_from_labels(
 
 
 class FileConnectorHosts:
+    "Class used for exchanging data between different stages"
+
     def __init__(self, hosts: List[dict], hostname_field: str, fieldnames: List[str]):
         self.hosts = hosts
         self.hostname_field = hostname_field
@@ -1173,11 +1180,13 @@ class FileConnectorHosts:
 
     @classmethod
     def from_serialized_attributes(cls, serialized: dict):
+        "Generate an instance from serialized attributes"
         return cls(
             serialized["hosts"], serialized["hostname_field"], serialized["fieldnames"]
         )
 
     def _serialize_attributes(self) -> dict:
+        "Serialize class attributes"
         return {
             "hosts": self.hosts,
             "hostname_field": self.hostname_field,
