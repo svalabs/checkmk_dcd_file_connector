@@ -391,7 +391,7 @@ class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
     "The connector that manages the importing"
 
     @classmethod
-    def name(cls) -> str:
+    def name(cls) -> str:  # pylint: disable=missing-function-docstring
         return "csvconnector"
 
     def _execution_interval(self) -> int:
