@@ -1,6 +1,6 @@
 import os.path
 
-from csvconnector import FileImporter, LowercaseImporter
+from fileconnector import FileImporter, LowercaseImporter
 
 import pytest
 
