@@ -171,9 +171,9 @@ class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-cl
                 )),
                 ("lowercase_everything", Checkbox(
                     default_value=False,
-                    title=_("Lowercase all keys and values"),
+                    title=_("Lowercase everything"),
                     help=_(
-                        "This results in all keys and values being lowercased."
+                        "This results in all imported data being lowercased."
                     ),
                 )),
             ],
