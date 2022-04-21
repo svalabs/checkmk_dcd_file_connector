@@ -58,6 +58,20 @@ If it fails it will try to find a field with an IP.
 It is possible to import an BVQ state file by selecting the
 corresponding _Data Format_ during the connection configuration.
 
+## Troubleshooting
+
+### Logs
+
+The connector uses the DCD logging.
+Please keep in mind that there are separate log settings for the DCD that allow increasing the log level only for DCD.
+
+You can also have a look at the [log file](https://docs.checkmk.com/latest/en/dcd.html#_dcd_log_file).
+
+### omd restart
+
+If problems occur after an update it is recommend run an `omd restart` once.
+
+It is also recommended to execute `omd restart` if you happen to stumble upon an error message like `Skipping connection 'import_hosts' because of unknown connector type 'fileconnector'`
 
 ## Building
 
