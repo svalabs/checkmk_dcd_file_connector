@@ -1,4 +1,4 @@
-# CSV Import
+# File Connector
 
 Import hosts from a file in CSV, JSON or BVQ format.
 This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.checkmk.com/latest/de/dcd.html) feature.

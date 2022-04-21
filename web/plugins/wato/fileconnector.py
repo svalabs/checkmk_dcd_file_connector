@@ -30,7 +30,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-WATO configuration module for CSVConnector.
+WATO configuration module for File Connector.
 """
 
 import os.path
@@ -60,19 +60,19 @@ from cmk.gui.valuespec import (  # pylint: disable=import-error
 
 
 @connector_parameters_registry.register
-class CSVConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
+class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-class-docstring
 
     @classmethod
     def name(cls) -> str:  # pylint: disable=missing-function-docstring
-        return "csvconnector"
+        return "fileconnector"
 
     @classmethod
     def title(cls) -> str:  # pylint: disable=missing-function-docstring
-        return _("CSV import")
+        return _("File import")
 
     @classmethod
     def description(cls) -> str:  # pylint: disable=missing-function-docstring
-        return _("Connector for importing data from a CSV, JSON or BVQ file.")
+        return _("Connector for importing hosts from a CSV, JSON or BVQ file.")
 
     def valuespec(self):  # pylint: disable=missing-function-docstring
         csv_value = FixedValue(value="csv", title="CSV", totext="Comma-separated values.")

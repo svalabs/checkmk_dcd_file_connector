@@ -30,7 +30,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-CSVConnector import logic.
+File Connector import logic.
 """
 
 import csv
@@ -175,12 +175,12 @@ def chunks(iterable: Iterable, count: int):
 
 
 @connector_config_registry.register
-class CSVConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
+class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
 
     @classmethod
     def name(cls) -> str:  # pylint: disable=missing-function-docstring
-        return "csvconnector"
+        return "fileconnector"
 
     def _connector_attributes_to_config(self) -> dict:
         return {
@@ -387,12 +387,12 @@ class LowercaseImporter:
 
 
 @connector_registry.register
-class CSVConnector(Connector):  # pylint: disable=too-few-public-methods
+class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     "The connector that manages the importing"
 
     @classmethod
     def name(cls) -> str:  # pylint: disable=missing-function-docstring
-        return "csvconnector"
+        return "fileconnector"
 
     def _execution_interval(self) -> int:
         """Number of seconds to sleep after each phase execution"""

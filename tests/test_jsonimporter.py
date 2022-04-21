@@ -1,6 +1,6 @@
 import os.path
 
-from csvconnector import JSONImporter
+from fileconnector import JSONImporter
 
 import pytest
 

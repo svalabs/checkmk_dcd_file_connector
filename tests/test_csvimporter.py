@@ -1,6 +1,6 @@
 import os.path
 
-from csvconnector import CSVImporter
+from fileconnector import CSVImporter
 import pytest
 
 
