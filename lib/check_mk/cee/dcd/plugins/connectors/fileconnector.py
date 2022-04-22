@@ -380,43 +380,44 @@ class LowercaseImporter:
 
 
 class BaseApiClient(ABC):
+    "Abstract class as a base for creating new API clients"
 
     def __init__(self, api_client):
         self._api_client = api_client
 
     @abstractmethod
     def get_hosts(self) -> List[dict]:
-        pass
+        "Retrieve the existing hosts"
 
     @abstractmethod
     def add_hosts(self, hosts: List[dict]) -> Dict:
-        pass
+        "Add new hosts"
 
     @abstractmethod
     def modify_hosts(self, hosts: List[dict]):
-        pass
+        "Modify existing hosts"
 
     @abstractmethod
     def delete_hosts(self, hosts: List[dict]):
-        pass
+        "Delete existing hosts"
 
     @abstractmethod
     def get_host_tags(self):
+        "Retrieve the existing host tags"
         # TODO: what format do we want to be returned?
-        pass
 
     @abstractmethod
     def discover_services(self, hostnames: List[str]) -> bool:
+        "Trigger a service discovery on the given hosts"
         # TODO: discovery status check necessary to be exposed as a single function?
-        pass
 
     @abstractmethod
     def is_discovery_running(self) -> bool:
-        pass
+        "Checks if discovery is currently running"
 
     @abstractmethod
     def activate_changes(self) -> bool:
-        pass
+        "Activate pending changes"
 
     @property
     def requires_activation(self) -> bool:
@@ -428,14 +429,16 @@ class BaseApiClient(ABC):
 
     @abstractmethod
     def get_folders(self) -> Set[str]:
-        pass
+        "Retrieve existing folders"
 
     @abstractmethod
     def add_folder(self, folder: str):
-        pass
+        "Add new folder"
 
 
 class HttpApiClient(BaseApiClient):
+    "A client that uses the legacy HTTP API of checkmk"
+
     # The following lines can be used to debug _api_client.
     # self._logger.info("Dir: {}".format(dir(self._api_client)))
     # import inspect
