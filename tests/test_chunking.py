@@ -15,11 +15,7 @@ def test_chunking_fills_with_none():
     original_iter = list(range(10))
     assert len(original_iter) % 3 != 0
 
-<<<<<<< HEAD
-    for index, chunk in enumerate(fileconnector.chunks(original_iter, chunk_size)):
-=======
     for index, chunk in enumerate(Chunker.chunks(original_iter, chunk_size)):
->>>>>>> Move chunking our calls into a separate class
         print(chunk)
         if index != chunk_size:
             assert len([x for x in chunk if x is not None]) == chunk_size
