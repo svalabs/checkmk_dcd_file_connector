@@ -422,8 +422,8 @@ class BaseApiClient(ABC):
     @property
     def requires_activation(self) -> bool:
         """
-        This function indicates if the class requires an explicit
-        activation after making changes.
+        Indicates if the class requires an explicit activation after
+        making changes.
         """
         return True
 
@@ -517,6 +517,7 @@ class Chunker:
 
     @property
     def requires_activation(self) -> bool:
+        "Indicates if an activation needs to be triggered"
         # The wrapped methods activate the changes.
         return False
 
