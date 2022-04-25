@@ -492,6 +492,18 @@ class HttpApiClient(BaseApiClient):
 
 
 class Chunker:
+    """
+    Split client requests into smaller batch sizes.
+
+    We learned that having a full activation queue might lead to slow
+    WATO reaction.
+    As a workaround we do not wait until the activation queue is full
+    of our requests but submit smaller quantities of changes.
+
+    This class splits the requests into chunks of the desired amount
+    and calls the corresponding methods.
+    Other methods are not proxied.
+    """
 
     _CHUNKABLE_METHODS = {"delete_hosts"}
     _CHUNKABLE_FUNCTIONS = {"add_hosts", "modify_hosts"}
