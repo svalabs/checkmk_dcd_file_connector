@@ -33,6 +33,10 @@ class DummyApiClient:
     def __init__(self):
         self._calls = defaultdict(int)
 
+    @property
+    def requires_activation(self):
+        return True
+
     def add_hosts(self, hosts):
         self._calls["add_hosts"] += 1
         return hosts
