@@ -34,7 +34,7 @@ The first column in the CSV is expected to contain the hostname.
 
 #### Example
 
-An file for an import might look like this:
+A file for an import might look like this:
 
 ```csv
 HOSTNAME,STANDORT,STADT,IDENT
@@ -52,6 +52,27 @@ The file is to be expected to contain an array of JSON objects.
 
 It will try to detect the field that contains the hostname.
 If it fails it will try to find a field with an IP.
+
+#### Example
+
+A file for an import might look like this:
+
+```json
+[
+  {
+    "hostname": "ABC001",
+    "STANDORT": "DARZ",
+    "STADT": "Darmstadt",
+    "IDENT": "NET"
+  },
+  {
+    "hostname": "ABC002",
+    "STANDORT": "WIRZ",
+    "STADT": "Wiesbaden",
+    "IDENT": "NET"
+  }
+]
+```
 
 ### BVQ file
 
