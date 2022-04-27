@@ -5,7 +5,7 @@ This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.chec
 
 ## Usage
 
-After installation you will have to create a new connection using the _CSV Connector_ type.
+After installation you will have to create a new connection using the _File Import_ connector type.
 
 You will have to specify an existing file that will be used for importing.
 Alongside that you have to choose the format your data is in.
