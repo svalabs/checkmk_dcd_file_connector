@@ -36,7 +36,7 @@ The first column in the CSV is expected to contain the hostname.
 
 An file for an import might look like this:
 
-```
+```csv
 HOSTNAME,STANDORT,STADT,IDENT
 ABC001,DARZ,Darmstadt,NET
 ABC002,WIRZ,Wiesbaden,NET
