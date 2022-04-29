@@ -3,6 +3,10 @@
 Import hosts from a file in CSV, JSON or BVQ format.
 This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.checkmk.com/latest/de/dcd.html) feature.
 
+## Download
+
+You can download releases of this package from [fileconnector @ checkmk exchange](https://exchange.checkmk.com/p/fileconnector).
+
 ## Usage
 
 After installation you will have to create a new connection using the _File Import_ connector type.
