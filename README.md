@@ -16,17 +16,16 @@ Alongside that you have to choose the format your data is in.
 
 The plugin tries to detect IP addresses and set them accordingly on your hosts. Field names that are assumed to contain an IP are `ipv4`, `ip`, `ipaddress`.
 
-### Managing different host attributes
+### Managing different host properties
 
-The plugin supports handling different attributes of a host.
-
+The plugin supports handling different properties of a host.
 This is achieved by using column or field names with special prefixes.
 
-You can prefix a column name with `tag_` for an explicit handling as a tag.
-If you prefix the column with `label_` the contents of the column will be treated as a label.
-If you prefix the column with `attr_` the contents will be handled as an attribute. Missing attributes have to be created manually.
+If you prefix the column with `label_` the contents of the column will be treated as a label. This is the default behaviour if neither one of the specific keywords nor another prefix is used.
 
-Without a given prefix the columns will be treated as tags by default.
+You can prefix a column name with `tag_` for an explicit handling as a tag (tag group). Please make sure that you reference the tag ID so that a match can be made, i.e. to match the ID `flower` you have to write `tag_flower`.
+
+If you prefix the column with `attr_` the contents will be handled as an attribute. Please make sure to  Missing attributes have to be created manually, the connector will not create these.
 
 ## File Formats
 
