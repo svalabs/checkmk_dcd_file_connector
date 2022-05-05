@@ -1,9 +1,5 @@
 {'author': u'Niko Wenselowski <niko.wenselowski@sva.de>',
- 'description': 'Import data from a file in CSV, JSON or BVQ format.\n'
-                '\n'
-                'Please check the <a '
-                'href="https://github.com/svalabs/checkmk_dcd_file_connector/blob/main/README.md">README '
-                'at GitHub</a> for additional information.\n',
+ 'description': '${DESCRIPTION}',
  'download_url': 'https://github.com/svalabs/checkmk_dcd_file_connector/',
  'files': {'lib': ['check_mk/cee/dcd/plugins/connectors/fileconnector.py'],
            'web': ['plugins/wato/fileconnector.py']},
