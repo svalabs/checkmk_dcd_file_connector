@@ -44,24 +44,36 @@ run tests:
       junit: coverage.xml
 
 
+render info:
+  stage: test
+  image: python:3-slim
+  variables:
+    VERSION: $CI_COMMIT_REF_NAME
+  before_script:
+    - pip install markdown
+  script:
+    # Fill the template with our data
+    - python create_package_metadata.py
+    # Converting info into info.json
+    - python -c 'import json; f = open("info"); exec("j=%s" % f.read()); fj = open("info.json", "w"); json.dump(j, fj)'
+  artifacts:
+    paths:
+      - info
+      - info.json
+
+
 create mkp:
   stage: package
   needs:
     - run tests
-  image: python:3-slim
+    - job: render info
+      artifacts: true
+  image: alpine
   only:
     - tags
     - api
     - web
-  variables:
-    VERSION: $CI_COMMIT_REF_NAME
-  before_script:
-    - apt update
-    - apt install -y gettext-base
   script:
-    - cat info_template | envsubst > info
-    # Converting info into info.json
-    - python -c 'import json; f = open("info"); exec("j=%s" % f.read()); fj = open("info.json", "w"); json.dump(j, fj)'
     # Creating required tar files
     - tar -cv -C lib/ -f lib.tar check_mk/
     - tar -cv -C web/ -f web.tar plugins/wato/
