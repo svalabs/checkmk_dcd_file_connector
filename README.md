@@ -1,15 +1,17 @@
 # File Connector
 
 Import hosts from a file in CSV, JSON or BVQ format.
-This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.checkmk.com/latest/de/dcd.html) feature.
+This makes use of Check MKs [Dynamic Host Configuration (DCD)](https://docs.checkmk.com/latest/en/dcd.html) feature.
 
 ## Download
 
 You can download releases of this package from [fileconnector @ checkmk exchange](https://exchange.checkmk.com/p/fileconnector).
 
+The source code is available at [GitHub: svalabs/checkmk_dcd_file_connector](https://github.com/svalabs/checkmk_dcd_file_connector/).
+
 ## Usage
 
-After installation you will have to create a new connection using the _File Import_ connector type.
+After [installation](https://docs.checkmk.com/latest/en/mkps.html#_installing_an_mkp) you will have to create a new connection using the _File Import_ connector type.
 
 You will have to specify an existing file that will be used for importing.
 Alongside that you have to choose the format your data is in.
