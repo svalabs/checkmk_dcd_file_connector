@@ -45,10 +45,6 @@ A file for an import might look like this:
 HOSTNAME,STANDORT,STADT,IDENT
 ABC001,DARZ,Darmstadt,NET
 ABC002,WIRZ,Wiesbaden,NET
-ABC003,WIRZ,Wiesbaden,SYS
-ABC004,DARZ,Darmstadt,SYS
-ABC005,DATU,Darmstadt,SYS
-ABC006,DATU,Darmstadt,NET
 ```
 
 ### JSON file
