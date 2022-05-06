@@ -433,7 +433,7 @@ class BaseApiClient(ABC):
         """
 
     @abstractmethod
-    def discover_services(self, hostnames: List[str]) -> bool:
+    def discover_services(self, hostnames: List[str]):
         "Trigger a service discovery on the given hosts"
         # TODO: discovery status check necessary to be exposed as a single function?
 
