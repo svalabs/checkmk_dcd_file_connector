@@ -767,7 +767,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             modified_host_names,
             deleted_host_names,
         )
-        self._logger.info(change_message)
 
         return changes_to_hosts, change_message
 
