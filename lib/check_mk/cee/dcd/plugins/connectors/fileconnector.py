@@ -561,12 +561,12 @@ class Chunker:
         "Chunk a call that does not return anything"
 
         @wraps(function)
-        def wrap_method(parameter):
+        def wrap_function(parameter):
             for chunk in self.chunks(parameter, self._chunk_size):
                 function([c for c in chunk if c])
                 self._api_client.activate_changes()
 
-        return wrap_method
+        return wrap_function
 
 
 @connector_registry.register
