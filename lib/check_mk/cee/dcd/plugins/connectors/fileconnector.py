@@ -402,9 +402,13 @@ class BaseApiClient(ABC):
         "Delete existing hosts"
 
     @abstractmethod
-    def get_host_tags(self):
-        "Retrieve the existing host tags"
-        # TODO: what format do we want to be returned?
+    def get_host_tags(self) -> List[dict]:
+        """
+        Retrieve the existing host tags.
+
+        This includes builtin and custom created tag groups.
+        Auxiliary tags are not included.
+        """
 
     @abstractmethod
     def discover_services(self, hostnames: List[str]) -> bool:
@@ -456,11 +460,19 @@ class HttpApiClient(BaseApiClient):
     def delete_hosts(self, hosts: List[dict]):
         self._api_client.delete_hosts(hosts)
 
-    def get_host_tags(self):
+    def get_host_tags(self) -> List[dict]:
         # Working around limitations of the builtin client to get the
         # required results from the API.
         # The second parameter has to be a dict.
-        return self._api_client._api_request("webapi.py?action=get_hosttags", {})  # pylint: disable=protected-access
+        tag_response = self._api_client._api_request("webapi.py?action=get_hosttags", {})  # pylint: disable=protected-access
+
+        # The response contains a dict with the keys
+        # aux_tags, builtin, tag_groups and configuration_hash.
+        # Each tag has an field 'id' field we use for matching.
+        all_tags = tag_response["tag_groups"]  # a list
+        all_tags.extend(tag_response["builtin"]["tag_groups"])
+
+        return all_tags
 
     def discover_services(self, hostnames: List[str]):
         self._api_client.bulk_discovery_start(hostnames)
@@ -663,12 +675,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             cmk_tags = {}
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
-                tag_response = self._api_client.get_host_tags()
-
-                cmk_tags = create_hostlike_tags(tag_response["tag_groups"])
-                cmk_tags.update(
-                    create_hostlike_tags(tag_response["builtin"]["tag_groups"])
-                )
+                host_tags = self._api_client.get_host_tags()
+                cmk_tags = create_hostlike_tags(host_tags)
 
         with self.status.next_step(
             "phase2_update", _("Phase 2.3: Updating config")
