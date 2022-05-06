@@ -579,12 +579,19 @@ class Chunker:
 
         @wraps(function)
         def wrap_function(parameter):
-            returned_values = []
+            returned_values = {}
             for chunk in self.chunks(parameter, self._chunk_size):
                 single_call_return = function([c for c in chunk if c])
 
                 if single_call_return:
-                    returned_values.extend(single_call_return)
+                    for key, value in single_call_return.items():
+                        try:
+                            returned_values[key].extend(value)
+                        except AttributeError:  # possibly a dict
+                            returned_values[key].update(value)
+                        except KeyError:  # no initial value
+                            returned_values[key] = value
+
                     self._api_client.activate_changes()
 
             return returned_values
