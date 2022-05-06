@@ -485,7 +485,9 @@ class HttpApiClient(BaseApiClient):
         # Working around limitations of the builtin client to get the
         # required results from the API.
         # The second parameter has to be a dict.
-        tag_response = self._api_client._api_request("webapi.py?action=get_hosttags", {})  # pylint: disable=protected-access
+        tag_response = self._api_client._api_request(  # pylint: disable=protected-access
+            "webapi.py?action=get_hosttags", {}
+        )
 
         # The response contains a dict with the keys
         # aux_tags, builtin, tag_groups and configuration_hash.
@@ -513,7 +515,9 @@ class HttpApiClient(BaseApiClient):
         return True
 
     def get_folders(self) -> Set[str]:
-        all_folders = self._api_client._api_request("webapi.py?action=get_all_folders", {})  # pylint: disable=protected-access
+        all_folders = self._api_client._api_request(  # pylint: disable=protected-access
+            "webapi.py?action=get_all_folders", {}
+        )
         return set(all_folders)
 
     def add_folder(self, folder: str):
@@ -521,7 +525,9 @@ class HttpApiClient(BaseApiClient):
         folder_data = {"folder": folder, "attributes": {}}
         data = {"request": json.dumps(folder_data)}
 
-        self._api_client._api_request("webapi.py?action=add_folder", data)  # pylint: disable=protected-access
+        self._api_client._api_request(  # pylint: disable=protected-access
+            "webapi.py?action=add_folder", data
+        )
 
 
 class Chunker:
