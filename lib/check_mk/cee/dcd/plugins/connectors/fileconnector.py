@@ -731,37 +731,12 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             changes_to_hosts = bool(
                 created_host_names or modified_host_names or deleted_host_names
             )
-            if changes_to_hosts:
-                if created_host_names and modified_host_names and deleted_host_names:
-                    change_message = _("Hosts: %i created, %i modified, %i deleted") % (
-                        len(created_host_names),
-                        len(modified_host_names),
-                        len(deleted_host_names),
-                    )
-                elif created_host_names and modified_host_names:
-                    change_message = _("Hosts: %i created, %i modified") % (
-                        len(created_host_names),
-                        len(modified_host_names),
-                    )
-                elif created_host_names and deleted_host_names:
-                    change_message = _("Hosts: %i created, %i deleted") % (
-                        len(created_host_names),
-                        len(deleted_host_names),
-                    )
-                elif modified_host_names and deleted_host_names:
-                    change_message = _("Hosts: %i modified, %i deleted") % (
-                        len(modified_host_names),
-                        len(deleted_host_names),
-                    )
-                elif created_host_names:
-                    change_message = _("Hosts: %i created") % len(created_host_names)
-                elif deleted_host_names:
-                    change_message = _("Hosts: %i deleted") % len(deleted_host_names)
-                else:
-                    change_message = _("Hosts: %i modified") % len(modified_host_names)
-            else:
-                change_message = _("Nothing changed")
-
+            change_message = self._get_change_message(
+                changes_to_hosts,
+                created_host_names,
+                modified_host_names,
+                deleted_host_names,
+            )
             self._logger.info(change_message)
             step.finish(change_message)
 
@@ -1272,6 +1247,49 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         )
 
         return hosts_to_delete
+
+    @staticmethod
+    def _get_change_message(
+        changes_to_hosts: bool,
+        created_host_names: list,
+        modified_host_names: list,
+        deleted_host_names: list,
+    ):
+        changes_to_hosts = bool(
+            created_host_names or modified_host_names or deleted_host_names
+        )
+        if changes_to_hosts:
+            if created_host_names and modified_host_names and deleted_host_names:
+                change_message = _("Hosts: %i created, %i modified, %i deleted") % (
+                    len(created_host_names),
+                    len(modified_host_names),
+                    len(deleted_host_names),
+                )
+            elif created_host_names and modified_host_names:
+                change_message = _("Hosts: %i created, %i modified") % (
+                    len(created_host_names),
+                    len(modified_host_names),
+                )
+            elif created_host_names and deleted_host_names:
+                change_message = _("Hosts: %i created, %i deleted") % (
+                    len(created_host_names),
+                    len(deleted_host_names),
+                )
+            elif modified_host_names and deleted_host_names:
+                change_message = _("Hosts: %i modified, %i deleted") % (
+                    len(modified_host_names),
+                    len(deleted_host_names),
+                )
+            elif created_host_names:
+                change_message = _("Hosts: %i created") % len(created_host_names)
+            elif deleted_host_names:
+                change_message = _("Hosts: %i deleted") % len(deleted_host_names)
+            else:
+                change_message = _("Hosts: %i modified") % len(modified_host_names)
+        else:
+            change_message = _("Nothing changed")
+
+        return change_message
 
     def _activate_changes(self) -> bool:
         "Activate changes. Returns a boolean representation of the success."
