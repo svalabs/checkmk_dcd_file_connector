@@ -39,11 +39,17 @@ class DummyApiClient:
 
     def add_hosts(self, hosts):
         self._calls["add_hosts"] += 1
-        return hosts
+        return {
+            "succeeded_hosts": hosts,
+            "failed_hosts": {}
+        }
 
     def modify_hosts(self, hosts):
         self._calls["modify_hosts"] += 1
-        return hosts
+        return {
+            "succeeded_hosts": hosts,
+            "failed_hosts": {}
+        }
 
     def delete_hosts(self, hosts):
         self._calls["delete_hosts"] += 1
@@ -96,7 +102,10 @@ def test_chunker_chunking_function(function, api_client, chunk_size):
 
     assert api_client._calls[function] == 2
     assert api_client._calls["activate_changes"] == 2
-    assert returned_hosts == hosts
+    hosts_success = returned_hosts["succeeded_hosts"]
+    assert hosts_success == hosts
+    hosts_failed = returned_hosts["failed_hosts"]
+    assert not hosts_failed
 
 
 def test_chunker_does_only_proxy_known_methods(api_client):
