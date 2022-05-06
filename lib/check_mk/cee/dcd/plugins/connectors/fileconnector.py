@@ -715,27 +715,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_update", _("Phase 2.3: Updating config")
         ) as step:
-            hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(
+            hosts_changed, change_message = self._update_config(
                 cmdb_hosts, cmk_hosts, hostname_field, cmk_tags
-            )
-
-            if self._connection_config.label_path_template:
-                # Creating possibly missing folders if we rely on
-                # labels for the path creation.
-                self._process_folders(hosts_to_create)
-
-            created_host_names = self._create_new_hosts(hosts_to_create)
-            modified_host_names = self._modify_existing_hosts(hosts_to_modify)
-            deleted_host_names = self._delete_hosts(hosts_to_delete)
-
-            changes_to_hosts = bool(
-                created_host_names or modified_host_names or deleted_host_names
-            )
-            change_message = self._get_change_message(
-                changes_to_hosts,
-                created_host_names,
-                modified_host_names,
-                deleted_host_names,
             )
             self._logger.info(change_message)
             step.finish(change_message)
@@ -743,7 +724,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_activate", _("Phase 2.4: Activating changes")
         ) as step:
-            if changes_to_hosts and self._api_client.requires_activation:
+            if hosts_changed and self._api_client.requires_activation:
                 if self._activate_changes():
                     step.finish(_("Activated the changes"))
                 else:
@@ -762,6 +743,33 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             api_client = Chunker(api_client, chunk_size)
 
         return api_client
+
+    def _update_config(self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags):
+        hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(
+            cmdb_hosts, cmk_hosts, hostname_field, cmk_tags
+        )
+
+        if self._connection_config.label_path_template:
+            # Creating possibly missing folders if we rely on
+            # labels for the path creation.
+            self._process_folders(hosts_to_create)
+
+        created_host_names = self._create_new_hosts(hosts_to_create)
+        modified_host_names = self._modify_existing_hosts(hosts_to_modify)
+        deleted_host_names = self._delete_hosts(hosts_to_delete)
+
+        changes_to_hosts = bool(
+            created_host_names or modified_host_names or deleted_host_names
+        )
+        change_message = self._get_change_message(
+            changes_to_hosts,
+            created_host_names,
+            modified_host_names,
+            deleted_host_names,
+        )
+        self._logger.info(change_message)
+
+        return changes_to_hosts, change_message
 
     def _partition_hosts(
         self,
