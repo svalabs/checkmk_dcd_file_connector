@@ -656,7 +656,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")
         ):
-            self._api_client = HttpApiClient(self._web_api)
+            self._api_client = self._get_api_client()
 
             cmk_hosts = self._api_client.get_hosts()
 
@@ -681,11 +681,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 # Creating possibly missing folders if we rely on
                 # labels for the path creation.
                 self._process_folders(hosts_to_create)
-
-            chunk_size = self._connection_config.chunk_size
-            if chunk_size:
-                self._logger.info("Processing in chunks of %i", chunk_size)
-                self._api_client = Chunker(self._api_client, chunk_size)
 
             created_host_names = self._create_new_hosts(hosts_to_create)
             modified_host_names = self._modify_existing_hosts(hosts_to_modify)
@@ -738,6 +733,18 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     step.finish(_("Not activated"))
             else:
                 step.finish(_("No activation needed"))
+
+    def _get_api_client(self):
+        "Get a preconfigured API client"
+
+        api_client = HttpApiClient(self._web_api)
+
+        chunk_size = self._connection_config.chunk_size
+        if chunk_size:
+            self._logger.info("Processing in chunks of %i", chunk_size)
+            api_client = Chunker(api_client, chunk_size)
+
+        return api_client
 
     def _partition_hosts(
         self,
