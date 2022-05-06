@@ -641,7 +641,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         def add_prefix_to_labels(
             labels: Dict[str, str], prefix: Optional[str] = None
         ) -> Dict[str, str]:
-            prefix = self._connection_config.label_prefix
             if not prefix:
                 return labels
 
