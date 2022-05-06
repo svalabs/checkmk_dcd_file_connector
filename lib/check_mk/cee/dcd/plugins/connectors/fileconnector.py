@@ -391,11 +391,33 @@ class BaseApiClient(ABC):
 
     @abstractmethod
     def add_hosts(self, hosts: List[dict]) -> Dict:
-        "Add new hosts"
+        """
+        Add new hosts
+
+        The returned dict has two keys:
+          - failed_hosts
+          - succeeded_hosts
+
+        The "failed_hosts" are a dict with hostname as the key and
+        additonal information about the problem as the value.
+        The "succeeded_hosts" are a list of successfully processed
+        hostnames.
+        """
 
     @abstractmethod
-    def modify_hosts(self, hosts: List[dict]):
-        "Modify existing hosts"
+    def modify_hosts(self, hosts: List[dict]) -> Dict:
+        """
+        Modify existing hosts
+
+        The returned dict has two keys:
+          - failed_hosts
+          - succeeded_hosts
+
+        The "failed_hosts" are a dict with hostname as the key and
+        additonal information about the problem as the value.
+        The "succeeded_hosts" are a list of successfully processed
+        hostnames.
+        """
 
     @abstractmethod
     def delete_hosts(self, hosts: List[dict]):
