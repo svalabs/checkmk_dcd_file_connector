@@ -476,8 +476,8 @@ class HttpApiClient(BaseApiClient):
     def add_hosts(self, hosts: List[dict]) -> Dict:
         return self._api_client.add_hosts(hosts)
 
-    def modify_hosts(self, hosts: List[dict]):
-        self._api_client.edit_hosts(hosts)
+    def modify_hosts(self, hosts: List[dict]) -> Dict:
+        return self._api_client.edit_hosts(hosts)
 
     def delete_hosts(self, hosts: List[dict]):
         self._api_client.delete_hosts(hosts)
