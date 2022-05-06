@@ -541,6 +541,7 @@ class Chunker:
         return zip_longest(*args)
 
     def _chunk_returning_call(self, function):
+        "Chunk a call that returns values"
 
         @wraps(function)
         def wrap_function(parameter):
@@ -557,6 +558,7 @@ class Chunker:
         return wrap_function
 
     def _chunk_call(self, function):
+        "Chunk a call that does not return anything"
 
         @wraps(function)
         def wrap_method(parameter):
