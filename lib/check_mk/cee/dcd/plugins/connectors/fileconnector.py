@@ -551,6 +551,63 @@ class HttpApiClient(BaseApiClient):
         )
 
 
+class RestApiClient(HttpApiClient):
+    """
+    A client that uses the modern REST API of checkmk
+
+    The new API client mostly behaves like requests.
+    """
+
+    def get_host_tags(self) -> List[dict]:
+        # Working around limitations of the builtin client to get the
+        # required results from the API.
+
+        tag_response = self._api_client._session.get("/domain-types/host_tag_group/collections/all")  # pylint: disable=protected-access
+
+        host_tag_group_names = set(
+            d["title"] for d in tag_response.json()["value"]
+        )
+        all_tags = []
+        keys_to_keep = ("id", "title")
+        for host_tag_name in host_tag_group_names:
+            host_tag = self._api_client._session.get(f"/objects/host_tag_group/{host_tag_name}")  # pylint: disable=protected-access
+
+            host_tag_dict = host_tag.json()
+            all_tags.append({key: host_tag_dict[key] for key in keys_to_keep})
+
+        return all_tags
+
+    def get_folders(self) -> Set[str]:
+        response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all",
+            params={
+                "parent": "/",
+                "recursive": True,
+            },
+        )
+        json_response = response.json()
+        all_folders = [v["extensions"]["path"] for v in json_response["value"]]
+
+        return set(all_folders)
+
+    def add_folder(self, folder: str):
+        path, folder_name = folder.rsplit("/", 1)
+        if not path.startswith("/"):
+            path = f"/{path}"
+
+        folder_data = {
+            "name": folder_name,
+            "title": folder_name,
+            "parent": path,
+
+        }
+
+        self._api_client._session.post(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all",
+            json=folder_data
+        )
+
+
 class Chunker:
     """
     Split client requests into smaller batch sizes.
@@ -756,7 +813,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     def _get_api_client(self):
         "Get a preconfigured API client"
 
-        api_client = HttpApiClient(self._web_api)
+        if hasattr(self._web_api, "_session"):
+            api_client = RestApiClient(self._web_api)
+        else:
+            api_client = HttpApiClient(self._web_api)
 
         chunk_size = self._connection_config.chunk_size
         if chunk_size:
