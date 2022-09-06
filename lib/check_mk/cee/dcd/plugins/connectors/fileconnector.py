@@ -405,7 +405,7 @@ class BaseApiClient(ABC):
         """
 
     @abstractmethod
-    def modify_hosts(self, hosts: List[dict]) -> Dict:
+    def modify_hosts(self, hosts: List[tuple]) -> Dict:
         """
         Modify existing hosts
 
@@ -475,7 +475,7 @@ class HttpApiClient(BaseApiClient):
     def add_hosts(self, hosts: List[dict]) -> Dict:
         return self._api_client.add_hosts(hosts)
 
-    def modify_hosts(self, hosts: List[dict]) -> Dict:
+    def modify_hosts(self, hosts: List[tuple]) -> Dict:
         hosts = self._remove_meta_data(hosts)
         return self._api_client.edit_hosts(hosts)
 
