@@ -1116,8 +1116,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     def _process_folders(self, hosts: List[dict]):
         # Folders are represented as a string.
         # Paths are written Unix style: 'folder/subfolder'
+        # When using the REST API they have to be '/folder/subfolder'
         host_folders = self._get_folders(hosts)
         existing_folders = self._api_client.get_folders()
+        self._logger.debug(f"Existing folders: %s", existing_folders)
 
         folders_to_create = host_folders - existing_folders
         self._logger.debug("Creating the following folders: %s", folders_to_create)
@@ -1125,8 +1127,17 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _get_folders(self, hosts: List[dict]) -> Set[str]:
         "Get the folders from the hosts to create."
-        folders = {folder_path for (_, folder_path, _) in hosts}
-        self._logger.debug("Found the following folders: %s", folders)
+        def prefix_path(path):
+            if not path.startswith("/"):
+                return f"/{path}"
+
+            return path
+
+        folders = {prefix_path(folder_path) for (_, folder_path, _) in hosts}
+        self._logger.debug(
+            "Found the following folders from missing hosts: %s",
+            folders
+        )
 
         return folders
 
