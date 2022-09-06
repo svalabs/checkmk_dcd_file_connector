@@ -476,7 +476,28 @@ class HttpApiClient(BaseApiClient):
         return self._api_client.add_hosts(hosts)
 
     def modify_hosts(self, hosts: List[dict]) -> Dict:
+        hosts = self._remove_meta_data(hosts)
         return self._api_client.edit_hosts(hosts)
+
+    @classmethod
+    def _remove_meta_data(cls, hosts: List[tuple]) -> List[tuple]:
+        """
+        Remove the meta_data field from host attributes to update.
+
+        Since checkmk 2.1 the API will throw an error if the attributes to
+        update contain the field "meta_data".
+        Therefore we remove this field.
+        """
+        new_hosts = []
+        for hostname, update_attributes, delete_attributes in hosts:
+            try:
+                del update_attributes["meta_data"]
+            except KeyError:
+                pass
+
+            new_hosts.append((hostname, update_attributes, delete_attributes))
+
+        return new_hosts
 
     def delete_hosts(self, hosts: List[dict]):
         self._api_client.delete_hosts(hosts)
