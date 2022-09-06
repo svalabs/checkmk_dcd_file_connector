@@ -1037,7 +1037,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
                 attributes_to_unset = []
                 if future_ip is None:
-                    attributes_to_unset.append("ipaddress")
+                    if existing_ip is not None:
+                        attributes_to_unset.append("ipaddress")
                 else:
                     attributes["ipaddress"] = future_ip
 
