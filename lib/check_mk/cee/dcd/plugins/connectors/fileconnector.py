@@ -1156,7 +1156,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         start = time.time()
 
         def are_folders_missing() -> bool:
-            existing_folders = self._get_existing_folders()
+            existing_folders = self._api_client.get_folders()
             missing_folders = set(folders) - existing_folders
             self._logger.debug("Missing the following folders: %s", ", ".join(missing_folders))
             return bool(missing_folders)
