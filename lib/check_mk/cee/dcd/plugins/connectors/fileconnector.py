@@ -586,10 +586,12 @@ class RestApiClient(HttpApiClient):
         return all_tags
 
     def get_folders(self) -> Set[str]:
+        root_folder = "/"
+
         response = self._api_client._session.get(  # pylint: disable=protected-access
             "/domain-types/folder_config/collections/all",
             params={
-                "parent": "/",
+                "parent": root_folder,
                 "recursive": True,
             },
         )
