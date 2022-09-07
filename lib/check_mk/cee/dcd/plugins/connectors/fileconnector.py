@@ -823,8 +823,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         "Get a preconfigured API client"
 
         if hasattr(self._web_api, "_session"):
+            self._logger.debug("Creating a RestApiClient")
             api_client = RestApiClient(self._web_api)
         else:
+            self._logger.debug("Creating a HttpApiClient")
             api_client = HttpApiClient(self._web_api)
 
         chunk_size = self._connection_config.chunk_size
