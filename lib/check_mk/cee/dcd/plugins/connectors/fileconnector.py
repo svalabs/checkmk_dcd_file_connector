@@ -473,11 +473,6 @@ class BaseApiClient(ABC):
 class HttpApiClient(BaseApiClient):
     "A client that uses the legacy HTTP API of checkmk"
 
-    # The following lines can be used to debug _api_client.
-    # self._logger.info("Dir: {}".format(dir(self._api_client)))
-    # import inspect
-    # self._logger.info("Sig: {}".format(inspect.getargspec(self._api_client._api_request)))
-
     def get_hosts(self) -> List[dict]:
         return self._api_client.get_all_hosts()
 
@@ -821,6 +816,12 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _get_api_client(self):
         "Get a preconfigured API client"
+
+        # The following lines can be used to debug _api_client:
+        # self._logger.info("Dir: {}".format(dir(self._web_api)))
+        # # Check method signature:
+        # import inspect
+        # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
 
         if hasattr(self._web_api, "_session"):
             self._logger.debug("Creating a RestApiClient")
