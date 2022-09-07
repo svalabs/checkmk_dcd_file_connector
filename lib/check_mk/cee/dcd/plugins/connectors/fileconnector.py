@@ -462,6 +462,10 @@ class BaseApiClient(ABC):
         return True
 
     @abstractmethod
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+
+    @abstractmethod
     def get_folders(self) -> Set[str]:
         "Retrieve existing folders"
 
@@ -538,6 +542,10 @@ class HttpApiClient(BaseApiClient):
 
         return True
 
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+        return {folder_path for (_, folder_path, _) in hosts}
+
     def get_folders(self) -> Set[str]:
         all_folders = self._api_client._api_request(  # pylint: disable=protected-access
             "webapi.py?action=get_all_folders", {}
@@ -581,6 +589,10 @@ class RestApiClient(HttpApiClient):
             all_tags.append({key: host_tag_dict[key] for key in keys_to_keep})
 
         return all_tags
+
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+        return {prefix_path(folder_path) for (_, folder_path, _) in hosts}
 
     def get_folders(self) -> Set[str]:
         root_folder = "/"
@@ -1199,9 +1211,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _process_folders(self, hosts: List[dict]):
         # Folders are represented as a string.
-        # Paths are written Unix style: 'folder/subfolder'
+        # Paths for the HTTP API are written Unix style without prefixed slash: 'folder/subfolder'
         # When using the REST API they have to be '/folder/subfolder'
-        host_folders = self._get_folders(hosts)
+        # We let the API client decide how the folders should be formatted.
+        host_folders = self._api_client.get_folders_from_new_hosts(hosts)
         self._logger.debug(
             "Found the following folders from missing hosts: %s",
             folders
@@ -1212,12 +1225,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         folders_to_create = host_folders - existing_folders
         self._logger.debug("Creating the following folders: %s", folders_to_create)
         self._create_folders(sorted(folders_to_create))
-
-    def _get_folders(self, hosts: List[dict]) -> Set[str]:
-        "Get the folders from the hosts to create."
-
-        folders = {prefix_path(folder_path) for (_, folder_path, _) in hosts}
-        return folders
 
     def _create_folders(self, folders: List[str]) -> List[str]:
         if not folders:
