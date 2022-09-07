@@ -476,8 +476,8 @@ class HttpApiClient(BaseApiClient):
         return self._api_client.add_hosts(hosts)
 
     def modify_hosts(self, hosts: List[tuple]) -> Dict:
-        hosts = self._remove_meta_data(hosts)
-        return self._api_client.edit_hosts(hosts)
+        cleaned_hosts = self._remove_meta_data(hosts)
+        return self._api_client.edit_hosts(cleaned_hosts)
 
     @classmethod
     def _remove_meta_data(cls, hosts: List[tuple]) -> List[tuple]:
@@ -488,16 +488,15 @@ class HttpApiClient(BaseApiClient):
         update contain the field "meta_data".
         Therefore we remove this field.
         """
-        new_hosts = []
+        cleaned_hosts = []
         for hostname, update_attributes, delete_attributes in hosts:
             try:
                 del update_attributes["meta_data"]
             except KeyError:
                 pass
+            cleaned_hosts.append((hostname, update_attributes, delete_attributes))
 
-            new_hosts.append((hostname, update_attributes, delete_attributes))
-
-        return new_hosts
+        return cleaned_hosts
 
     def delete_hosts(self, hosts: List[dict]):
         self._api_client.delete_hosts(hosts)
