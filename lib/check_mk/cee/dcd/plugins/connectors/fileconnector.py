@@ -167,6 +167,15 @@ def create_hostlike_tags(tags_from_cmk: dict) -> Dict[str, List[str]]:
     }
 
 
+def prefix_path(path: str) -> str:
+    "Making sure that a path is prefixed with path seperator"
+
+    if not path.startswith(PATH_SEPERATOR):
+        return f"{PATH_SEPERATOR}{path}"
+
+    return path
+
+
 @connector_config_registry.register
 class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
@@ -1186,14 +1195,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _get_folders(self, hosts: List[dict]) -> Set[str]:
         "Get the folders from the hosts to create."
-
-        def prefix_path(path: str) -> str:
-            "Making sure that a path is prefixed with path seperator"
-
-            if not path.startswith(PATH_SEPERATOR):
-                return f"{PATH_SEPERATOR}{path}"
-
-            return path
 
         folders = {prefix_path(folder_path) for (_, folder_path, _) in hosts}
         self._logger.debug(
