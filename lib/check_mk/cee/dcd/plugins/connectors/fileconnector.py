@@ -1186,7 +1186,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         # When using the REST API they have to be '/folder/subfolder'
         host_folders = self._get_folders(hosts)
         existing_folders = self._api_client.get_folders()
-        self._logger.debug(f"Existing folders: %s", existing_folders)
+        self._logger.debug("Existing folders: %s", existing_folders)
 
         folders_to_create = host_folders - existing_folders
         self._logger.debug("Creating the following folders: %s", folders_to_create)
