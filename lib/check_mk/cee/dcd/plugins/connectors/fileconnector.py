@@ -600,14 +600,11 @@ class RestApiClient(HttpApiClient):
 
     def add_folder(self, folder: str):
         path, folder_name = folder.rsplit("/", 1)
-        if not path.startswith("/"):
-            path = f"/{path}"
 
         folder_data = {
             "name": folder_name,
             "title": folder_name,
-            "parent": path,
-
+            "parent": prefix_path(path),
         }
 
         self._api_client._session.post(  # pylint: disable=protected-access
