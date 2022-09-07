@@ -599,7 +599,7 @@ class RestApiClient(HttpApiClient):
         return set(all_folders)
 
     def add_folder(self, folder: str):
-        path, folder_name = folder.rsplit("/", 1)
+        path, folder_name = folder.rsplit(PATH_SEPERATOR, 1)
 
         folder_data = {
             "name": folder_name,
