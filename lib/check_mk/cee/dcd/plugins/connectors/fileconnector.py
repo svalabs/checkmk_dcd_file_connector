@@ -823,12 +823,24 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         # import inspect
         # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
 
-        if hasattr(self._web_api, "_session"):
-            self._logger.debug("Creating a RestApiClient")
-            api_client = RestApiClient(self._web_api)
-        else:
+        def is_old_dcd(dcd_client) -> bool:
+            "Checking if a client is an old implementation"
+
+            # Attributes only present at old client:
+            # {'_http_post', '_api_request', '_parse_api_response',
+            #  'execute_remote_automation', 'edit_host'}
+            # We only check for the one used for direct API access:
+            if hasattr(dcd_client, "_api_request"):
+                return True
+
+            return False
+
+        if is_old_dcd(self._web_api):
             self._logger.debug("Creating a HttpApiClient")
             api_client = HttpApiClient(self._web_api)
+        else:
+            self._logger.debug("Creating a RestApiClient")
+            api_client = RestApiClient(self._web_api)
 
         chunk_size = self._connection_config.chunk_size
         if chunk_size:
