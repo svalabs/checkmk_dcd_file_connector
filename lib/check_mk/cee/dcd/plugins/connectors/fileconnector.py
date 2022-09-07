@@ -572,6 +572,8 @@ class RestApiClient(HttpApiClient):
 
         tag_response = self._api_client._session.get("/domain-types/host_tag_group/collections/all")  # pylint: disable=protected-access
 
+        # TODO: the host_tag_group collection only returns us the title of a tag group.
+        # We require the ID for the following calls and therefore this won't run as expected.
         host_tag_group_names = set(
             d["title"] for d in tag_response.json()["value"]
         )
