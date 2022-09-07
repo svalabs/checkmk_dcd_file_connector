@@ -1186,9 +1186,12 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _get_folders(self, hosts: List[dict]) -> Set[str]:
         "Get the folders from the hosts to create."
-        def prefix_path(path):
-            if not path.startswith("/"):
-                return f"/{path}"
+
+        def prefix_path(path: str) -> str:
+            "Making sure that a path is prefixed with path seperator"
+
+            if not path.startswith(PATH_SEPERATOR):
+                return f"{PATH_SEPERATOR}{path}"
 
             return path
 
