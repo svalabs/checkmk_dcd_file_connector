@@ -6,7 +6,7 @@ stages:
 
 
 variables:
-  MKP_FILENAME: 'fileconnector-${CI_COMMIT_REF_NAME}.mkp'
+  MKP_FILENAME: 'fileconnector-${CI_COMMIT_REF_SLUG}.mkp'
 
 
 pylint:
