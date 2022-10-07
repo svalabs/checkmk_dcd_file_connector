@@ -808,7 +808,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             cmk_hosts = self._api_client.get_hosts()
 
-            cmk_tags = {}
+            cmk_tags = None
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
                 if self._api_client.api_supports_tags:
@@ -1072,8 +1072,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             if ip_address is not None:
                 attributes["ipaddress"] = ip_address
 
-            tags = create_host_tags(get_host_tags(host))
-            attributes.update(tags)
+            if tag_matcher:
+                tags = create_host_tags(get_host_tags(host))
+                attributes.update(tags)
 
             attributes_from_cmdb = get_host_attributes(host)
             attributes.update(attributes_from_cmdb)
@@ -1107,9 +1108,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     if key.startswith(label_prefix)
                 }
 
-            api_tags = get_host_tags(attributes)
-            host_tags = get_host_tags(cmdb_host)
-            future_tags = create_host_tags(host_tags)
+            if tag_matcher:
+                api_tags = get_host_tags(attributes)
+                host_tags = get_host_tags(cmdb_host)
+                future_tags = create_host_tags(host_tags)
 
             existing_ip = attributes.get("ipaddress")
             future_ip = get_ip_address(cmdb_host)
@@ -1129,7 +1131,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     self._logger.debug("Labels require update")
                     return True
 
-                if needs_modification(api_tags, future_tags):
+                if tag_matcher and needs_modification(api_tags, future_tags):
                     self._logger.debug("Tags require update")
                     return True
 
@@ -1175,7 +1177,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             return tuple()  # For consistent return type
 
-        tag_matcher = TagMatcher(cmk_tags)
+        tag_matcher = TagMatcher(cmk_tags) if cmk_tags is not None else None
         hosts_to_create = []
         hosts_to_modify = []
         for host in cmdb_hosts:
