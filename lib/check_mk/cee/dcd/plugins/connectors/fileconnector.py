@@ -605,7 +605,7 @@ class RestApiClient(HttpApiClient):
             },
         )
         json_response = response.json()
-        all_folders = [v["extensions"]["path"] for v in json_response["value"]]
+        all_folders = [value["extensions"]["path"] for value in json_response["value"]]
 
         return set(all_folders)
 
