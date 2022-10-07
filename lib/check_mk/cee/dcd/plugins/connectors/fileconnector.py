@@ -835,8 +835,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         # import inspect
         # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
 
-        def is_old_dcd(dcd_client) -> bool:
-            "Checking if a client is an old implementation"
+        def is_http_client(dcd_client) -> bool:
+            "Checking if the client is for the HTTP API implementation"
 
             # Attributes only present at old client:
             # {'_http_post', '_api_request', '_parse_api_response',
@@ -847,7 +847,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             return False
 
-        if is_old_dcd(self._web_api):
+        if is_http_client(self._web_api):
             self._logger.debug("Creating a HttpApiClient")
             api_client = HttpApiClient(self._web_api)
         else:
