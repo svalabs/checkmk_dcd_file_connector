@@ -394,6 +394,10 @@ class BaseApiClient(ABC):
     def __init__(self, api_client):
         self._api_client = api_client
 
+    @property
+    def api_supports_tags(self) -> bool:
+        return True
+
     @abstractmethod
     def get_hosts(self) -> List[dict]:
         "Retrieve the existing hosts"
@@ -568,6 +572,10 @@ class RestApiClient(HttpApiClient):
 
     The new API client mostly behaves like requests.
     """
+
+    @property
+    def api_supports_tags(self) -> bool:
+        return False
 
     def get_host_tags(self) -> List[dict]:
         # Working around limitations of the builtin client to get the
@@ -803,8 +811,16 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             cmk_tags = {}
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
-                host_tags = self._api_client.get_host_tags()
-                cmk_tags = create_hostlike_tags(host_tags)
+                if self._api_client.api_supports_tags:
+                    host_tags = self._api_client.get_host_tags()
+                    cmk_tags = create_hostlike_tags(host_tags)
+                else:
+                    self._logger.warning(
+                        "The REST API does not provide the required tag access."
+                        "There currently is a good way to retrieve the required"
+                        " information (tag ID and possible values)."
+                        "Tag sync disabled."
+                    )
 
         with self.status.next_step(
             "phase2_update", _("Phase 2.3: Updating config")
