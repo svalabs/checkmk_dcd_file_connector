@@ -816,9 +816,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     cmk_tags = create_hostlike_tags(host_tags)
                 else:
                     self._logger.warning(
-                        "The REST API does not provide the required tag access."
-                        "There currently is a good way to retrieve the required"
-                        " information (tag ID and possible values)."
+                        "The REST API does not provide the required tag access. "
+                        "There currently isn't a way to retrieve the required "
+                        "information (tag ID and possible values). "
                         "Tag sync disabled."
                     )
 
