@@ -1217,7 +1217,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         host_folders = self._api_client.get_folders_from_new_hosts(hosts)
         self._logger.debug(
             "Found the following folders from missing hosts: %s",
-            folders
+            host_folders
         )
         existing_folders = self._api_client.get_folders()
         self._logger.debug("Existing folders: %s", existing_folders)
