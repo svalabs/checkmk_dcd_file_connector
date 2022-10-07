@@ -167,15 +167,6 @@ def create_hostlike_tags(tags_from_cmk: dict) -> Dict[str, List[str]]:
     }
 
 
-def prefix_path(path: str) -> str:
-    "Making sure that a path is prefixed with path seperator"
-
-    if not path.startswith(PATH_SEPERATOR):
-        return f"{PATH_SEPERATOR}{path}"
-
-    return path
-
-
 @connector_config_registry.register
 class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
@@ -600,7 +591,16 @@ class RestApiClient(HttpApiClient):
 
     def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
         "Get the folders from the hosts to create."
-        return {prefix_path(folder_path) for (_, folder_path, _) in hosts}
+        return {self.prefix_path(folder_path) for (_, folder_path, _) in hosts}
+
+    @staticmethod
+    def prefix_path(path: str) -> str:
+        "Making sure that a path is prefixed with path seperator"
+
+        if not path.startswith(PATH_SEPERATOR):
+            return f"{PATH_SEPERATOR}{path}"
+
+        return path
 
     def get_folders(self) -> Set[str]:
         root_folder = "/"
@@ -623,7 +623,7 @@ class RestApiClient(HttpApiClient):
         folder_data = {
             "name": folder_name,
             "title": folder_name,
-            "parent": prefix_path(path),
+            "parent": self.prefix_path(path),
         }
 
         self._api_client._session.post(  # pylint: disable=protected-access
