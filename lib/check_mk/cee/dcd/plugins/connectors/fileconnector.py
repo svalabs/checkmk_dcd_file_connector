@@ -167,6 +167,15 @@ def create_hostlike_tags(tags_from_cmk: dict) -> Dict[str, List[str]]:
     }
 
 
+def prefix_path(path: str) -> str:
+    "Making sure that a path is prefixed with path seperator"
+
+    if not path.startswith(PATH_SEPERATOR):
+        return f"{PATH_SEPERATOR}{path}"
+
+    return path
+
+
 @connector_config_registry.register
 class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-methods
     """Loading the persisted connection config"""
@@ -385,6 +394,10 @@ class BaseApiClient(ABC):
     def __init__(self, api_client):
         self._api_client = api_client
 
+    @property
+    def api_supports_tags(self) -> bool:
+        return True
+
     @abstractmethod
     def get_hosts(self) -> List[dict]:
         "Retrieve the existing hosts"
@@ -405,7 +418,7 @@ class BaseApiClient(ABC):
         """
 
     @abstractmethod
-    def modify_hosts(self, hosts: List[dict]) -> Dict:
+    def modify_hosts(self, hosts: List[tuple]) -> Dict:
         """
         Modify existing hosts
 
@@ -453,6 +466,10 @@ class BaseApiClient(ABC):
         return True
 
     @abstractmethod
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+
+    @abstractmethod
     def get_folders(self) -> Set[str]:
         "Retrieve existing folders"
 
@@ -464,19 +481,34 @@ class BaseApiClient(ABC):
 class HttpApiClient(BaseApiClient):
     "A client that uses the legacy HTTP API of checkmk"
 
-    # The following lines can be used to debug _api_client.
-    # self._logger.info("Dir: {}".format(dir(self._api_client)))
-    # import inspect
-    # self._logger.info("Sig: {}".format(inspect.getargspec(self._api_client._api_request)))
-
     def get_hosts(self) -> List[dict]:
         return self._api_client.get_all_hosts()
 
     def add_hosts(self, hosts: List[dict]) -> Dict:
         return self._api_client.add_hosts(hosts)
 
-    def modify_hosts(self, hosts: List[dict]) -> Dict:
-        return self._api_client.edit_hosts(hosts)
+    def modify_hosts(self, hosts: List[tuple]) -> Dict:
+        cleaned_hosts = self._remove_meta_data(hosts)
+        return self._api_client.edit_hosts(cleaned_hosts)
+
+    @classmethod
+    def _remove_meta_data(cls, hosts: List[tuple]) -> List[tuple]:
+        """
+        Remove the meta_data field from host attributes to update.
+
+        Since checkmk 2.1 the API will throw an error if the attributes to
+        update contain the field "meta_data".
+        Therefore we remove this field.
+        """
+        cleaned_hosts = []
+        for hostname, update_attributes, delete_attributes in hosts:
+            try:
+                del update_attributes["meta_data"]
+            except KeyError:
+                pass
+            cleaned_hosts.append((hostname, update_attributes, delete_attributes))
+
+        return cleaned_hosts
 
     def delete_hosts(self, hosts: List[dict]):
         self._api_client.delete_hosts(hosts)
@@ -514,6 +546,10 @@ class HttpApiClient(BaseApiClient):
 
         return True
 
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+        return {folder_path for (_, folder_path, _) in hosts}
+
     def get_folders(self) -> Set[str]:
         all_folders = self._api_client._api_request(  # pylint: disable=protected-access
             "webapi.py?action=get_all_folders", {}
@@ -527,6 +563,72 @@ class HttpApiClient(BaseApiClient):
 
         self._api_client._api_request(  # pylint: disable=protected-access
             "webapi.py?action=add_folder", data
+        )
+
+
+class RestApiClient(HttpApiClient):
+    """
+    A client that uses the modern REST API of checkmk
+
+    The new API client mostly behaves like requests.
+    """
+
+    @property
+    def api_supports_tags(self) -> bool:
+        return False
+
+    def get_host_tags(self) -> List[dict]:
+        # Working around limitations of the builtin client to get the
+        # required results from the API.
+
+        tag_response = self._api_client._session.get("/domain-types/host_tag_group/collections/all")  # pylint: disable=protected-access
+
+        # TODO: the host_tag_group collection only returns us the title of a tag group.
+        # We require the ID for the following calls and therefore this won't run as expected.
+        host_tag_group_names = set(
+            d["title"] for d in tag_response.json()["value"]
+        )
+        all_tags = []
+        keys_to_keep = ("id", "title")
+        for host_tag_name in host_tag_group_names:
+            host_tag = self._api_client._session.get(f"/objects/host_tag_group/{host_tag_name}")  # pylint: disable=protected-access
+
+            host_tag_dict = host_tag.json()
+            all_tags.append({key: host_tag_dict[key] for key in keys_to_keep})
+
+        return all_tags
+
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+        return {prefix_path(folder_path) for (_, folder_path, _) in hosts}
+
+    def get_folders(self) -> Set[str]:
+        root_folder = "/"
+
+        response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all",
+            params={
+                "parent": root_folder,
+                "recursive": True,
+            },
+        )
+        json_response = response.json()
+        all_folders = [value["extensions"]["path"] for value in json_response["value"]]
+
+        return set(all_folders)
+
+    def add_folder(self, folder: str):
+        path, folder_name = folder.rsplit(PATH_SEPERATOR, 1)
+
+        folder_data = {
+            "name": folder_name,
+            "title": folder_name,
+            "parent": prefix_path(path),
+        }
+
+        self._api_client._session.post(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all",
+            json=folder_data
         )
 
 
@@ -709,8 +811,16 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             cmk_tags = {}
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
-                host_tags = self._api_client.get_host_tags()
-                cmk_tags = create_hostlike_tags(host_tags)
+                if self._api_client.api_supports_tags:
+                    host_tags = self._api_client.get_host_tags()
+                    cmk_tags = create_hostlike_tags(host_tags)
+                else:
+                    self._logger.warning(
+                        "The REST API does not provide the required tag access."
+                        "There currently is a good way to retrieve the required"
+                        " information (tag ID and possible values)."
+                        "Tag sync disabled."
+                    )
 
         with self.status.next_step(
             "phase2_update", _("Phase 2.3: Updating config")
@@ -735,7 +845,30 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     def _get_api_client(self):
         "Get a preconfigured API client"
 
-        api_client = HttpApiClient(self._web_api)
+        # The following lines can be used to debug _api_client:
+        # self._logger.info("Dir: {}".format(dir(self._web_api)))
+        # # Check method signature:
+        # import inspect
+        # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
+
+        def is_http_client(dcd_client) -> bool:
+            "Checking if the client is for the HTTP API implementation"
+
+            # Attributes only present at old client:
+            # {'_http_post', '_api_request', '_parse_api_response',
+            #  'execute_remote_automation', 'edit_host'}
+            # We only check for the one used for direct API access:
+            if hasattr(dcd_client, "_api_request"):
+                return True
+
+            return False
+
+        if is_http_client(self._web_api):
+            self._logger.debug("Creating a HttpApiClient")
+            api_client = HttpApiClient(self._web_api)
+        else:
+            self._logger.debug("Creating a RestApiClient")
+            api_client = RestApiClient(self._web_api)
 
         chunk_size = self._connection_config.chunk_size
         if chunk_size:
@@ -1016,7 +1149,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
                 attributes_to_unset = []
                 if future_ip is None:
-                    attributes_to_unset.append("ipaddress")
+                    if existing_ip is not None:
+                        attributes_to_unset.append("ipaddress")
                 else:
                     attributes["ipaddress"] = future_ip
 
@@ -1093,20 +1227,20 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _process_folders(self, hosts: List[dict]):
         # Folders are represented as a string.
-        # Paths are written Unix style: 'folder/subfolder'
-        host_folders = self._get_folders(hosts)
+        # Paths for the HTTP API are written Unix style without prefixed slash: 'folder/subfolder'
+        # When using the REST API they have to be '/folder/subfolder'
+        # We let the API client decide how the folders should be formatted.
+        host_folders = self._api_client.get_folders_from_new_hosts(hosts)
+        self._logger.debug(
+            "Found the following folders from missing hosts: %s",
+            host_folders
+        )
         existing_folders = self._api_client.get_folders()
+        self._logger.debug("Existing folders: %s", existing_folders)
 
         folders_to_create = host_folders - existing_folders
         self._logger.debug("Creating the following folders: %s", folders_to_create)
         self._create_folders(sorted(folders_to_create))
-
-    def _get_folders(self, hosts: List[dict]) -> Set[str]:
-        "Get the folders from the hosts to create."
-        folders = {folder_path for (_, folder_path, _) in hosts}
-        self._logger.debug("Found the following folders: %s", folders)
-
-        return folders
 
     def _create_folders(self, folders: List[str]) -> List[str]:
         if not folders:
