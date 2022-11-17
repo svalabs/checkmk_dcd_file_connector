@@ -63,15 +63,31 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
     NullObject,
 )
 
+try:
+    from functools import cache
+except ImportError:
+    from functools import lru_cache
+    cache = lru_cache(maxsize=None)
+
 BUILTIN_ATTRIBUTES = {"locked_by", "labels", "meta_data"}
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 FOLDER_PLACEHOLDER = "undefined"
 PATH_SEPERATOR = "/"
+REPLACABLE_CHARS = "äöüÄÖÜ(),"
+REPLACEMENT_CHAR = "_"
 
 
 def normalize_hostname(hostname: str) -> str:
     "Generate a normalized hostname form"
     return hostname.lower().replace(" ", "_")
+
+
+@cache
+def sanitise_str(value):
+    for char in REPLACABLE_CHARS:
+        value = value.replace(char, REPLACEMENT_CHAR)
+
+    return value
 
 
 def get_host_label(host: Dict[str, str], hostname_field: str) -> Dict[str, str]:
@@ -182,6 +198,7 @@ class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-me
             "file_format": self.file_format,
             "folder": self.folder,
             "lowercase_everything": self.lowercase_everything,
+            "replace_special_chars": self.replace_special_chars,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
@@ -197,6 +214,7 @@ class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-me
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
         self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)  # pylint: disable=attribute-defined-outside-init
+        self.replace_special_chars: bool = connector_cfg.get("replace_special_chars", False)  # pylint: disable=attribute-defined-outside-init
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -377,6 +395,56 @@ class LowercaseImporter:
             return value
 
         return value.lower()
+
+
+class SanitisingImporter:
+    """
+    This modifies an importer to return sanitised values.
+
+    Sanitised values are required because the checkmk REST API does not accept
+    some characters in the object values.
+    The HTTP API did accept these before.
+    """
+
+    def __init__(self, importer):
+        self._importer = importer
+
+    @property
+    def filepath(self):  # pylint: disable=missing-function-docstring
+        return self._importer.filepath
+
+    @property
+    def hosts(self):  # pylint: disable=missing-function-docstring
+        hosts = self._importer.hosts
+        if hosts is None:
+            return None
+
+        sanitise = self.sanitise
+
+        def sanitise_host(host):
+            return {key: sanitise(value) for key, value in host.items()}
+
+        return [sanitise_host(host) for host in hosts]
+
+    @property
+    def fields(self):  # pylint: disable=missing-function-docstring
+        return self._importer.fields
+
+    @property
+    def hostname_field(self):  # pylint: disable=missing-function-docstring
+        return self._importer.hostname_field
+
+    def import_hosts(self):
+        "Import hosts through the importer"
+        return self._importer.import_hosts()
+
+    @staticmethod
+    def sanitise(value):
+        "Convert the given value to lowercase if possible"
+        if isinstance(value, (int, float, bool)):
+            return value
+
+        return sanitise_str(value)
 
 
 class BaseApiClient(ABC):
@@ -838,6 +906,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         if self._connection_config.lowercase_everything:
             self._logger.info("All imported values will be lowercased")
             importer = LowercaseImporter(importer)
+
+        if self._connection_config.replace_special_chars:
+            self._logger.info("All imported values will have their values santized")
+            importer = SanitisingImporter(importer)
 
         return importer
 
