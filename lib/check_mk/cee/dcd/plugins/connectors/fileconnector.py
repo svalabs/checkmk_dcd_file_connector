@@ -346,8 +346,8 @@ class BVQImporter(FileImporter):
         return new_host
 
 
-class LowercaseImporter:
-    "This modifies an importer to only return lowercased values"
+class ModifyingImporter:
+    "Base class that allows modifying data retrieved from an importer."
 
     def __init__(self, importer):
         self._importer = importer
@@ -355,6 +355,26 @@ class LowercaseImporter:
     @property
     def filepath(self):  # pylint: disable=missing-function-docstring
         return self._importer.filepath
+
+    @property
+    def hosts(self):  # pylint: disable=missing-function-docstring
+        return self._importer.hosts
+
+    @property
+    def fields(self):  # pylint: disable=missing-function-docstring
+        return self._importer.fields
+
+    @property
+    def hostname_field(self):  # pylint: disable=missing-function-docstring
+        return self._importer.hostname_field
+
+    def import_hosts(self):
+        "Import hosts through the importer"
+        return self._importer.import_hosts()
+
+
+class LowercaseImporter(ModifyingImporter):
+    "This modifies an importer to only return lowercased values"
 
     @property
     def hosts(self):  # pylint: disable=missing-function-docstring
@@ -385,10 +405,6 @@ class LowercaseImporter:
 
         return hostname_field.lower()
 
-    def import_hosts(self):
-        "Import hosts through the importer"
-        return self._importer.import_hosts()
-
     @staticmethod
     def lowercase(value):
         "Convert the given value to lowercase if possible"
@@ -398,7 +414,7 @@ class LowercaseImporter:
         return value.lower()
 
 
-class SanitisingImporter:
+class SanitisingImporter(ModifyingImporter):
     """
     This modifies an importer to return sanitised values.
 
@@ -406,13 +422,6 @@ class SanitisingImporter:
     some characters in the object values.
     The HTTP API did accept these before.
     """
-
-    def __init__(self, importer):
-        self._importer = importer
-
-    @property
-    def filepath(self):  # pylint: disable=missing-function-docstring
-        return self._importer.filepath
 
     @property
     def hosts(self):  # pylint: disable=missing-function-docstring
@@ -426,18 +435,6 @@ class SanitisingImporter:
             return {key: sanitise(value) for key, value in host.items()}
 
         return [sanitise_host(host) for host in hosts]
-
-    @property
-    def fields(self):  # pylint: disable=missing-function-docstring
-        return self._importer.fields
-
-    @property
-    def hostname_field(self):  # pylint: disable=missing-function-docstring
-        return self._importer.hostname_field
-
-    def import_hosts(self):
-        "Import hosts through the importer"
-        return self._importer.import_hosts()
 
     @staticmethod
     def sanitise(value):
