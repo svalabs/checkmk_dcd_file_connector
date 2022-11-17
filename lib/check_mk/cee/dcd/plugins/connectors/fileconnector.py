@@ -83,7 +83,8 @@ def normalize_hostname(hostname: str) -> str:
 
 
 @cache
-def sanitise_str(value):
+def sanitise_str(value) -> str:
+    "Remove characters that can cause trouble with REST API"
     for char in REPLACABLE_CHARS:
         value = value.replace(char, REPLACEMENT_CHAR)
 
