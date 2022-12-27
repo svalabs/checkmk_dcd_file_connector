@@ -594,27 +594,18 @@ class RestApiClient(HttpApiClient):
         Returns a tuple with version information.
         For example `1.2.3p4` will return `(1, 2, 3, 4)`.
         """
-        try:
-            response = self._api_client._session.get(
-                "/version"
-            )  # pylint: disable=protected-access
-            json_response = response.json()
-        except Exception:  # Something is wrong with the API call or response
-            raise
+        response = self._api_client._session.get(
+            "/version"
+        )  # pylint: disable=protected-access
+        json_response = response.json()
 
-        try:
-            checkmk_version = json_response["versions"]["checkmk"]
-        except KeyError:  # Our dict isn't built as we expect it
-            raise
+        checkmk_version = json_response["versions"]["checkmk"]
 
-        try:
-            version, patchrelease = checkmk_version.split("p", 1)
-            patchrelease, _ = patchrelease.split(".", 1)  # might trail in .cee
-            patchrelease = int(patchrelease)
-            major, minor, patch = version.split(".")
-            version = (int(major), int(minor), int(patch), int(patchrelease))
-        except ValueError:  # Not the format we'd expect
-            raise
+        version, patchrelease = checkmk_version.split("p", 1)
+        patchrelease, _ = patchrelease.split(".", 1)  # might trail in .cee
+        patchrelease = int(patchrelease)
+        major, minor, patch = version.split(".")
+        version = (int(major), int(minor), int(patch), int(patchrelease))
 
         return version
 
