@@ -851,7 +851,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")
         ):
-            self._api_client = self._get_api_client()
+            self._api_client = self._get_api_client()  # pylint: disable=attribute-defined-outside-init
 
             cmk_hosts = self._api_client.get_hosts()
 
