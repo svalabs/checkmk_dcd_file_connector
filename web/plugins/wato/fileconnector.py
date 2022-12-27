@@ -194,7 +194,9 @@ class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-c
                     title=_("Replace characters to improve API compability"),
                     help=_(
                         "Replaces characters that might cause problems when"
-                        "used with the REST API by an underscore."
+                        "used with the REST API by an underscore. "
+                        "Due to possible performance impacts this is only "
+                        "recommended to use if you are running into problems."
                     ),
                 )),
             ],
