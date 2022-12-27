@@ -52,6 +52,7 @@ render info:
   before_script:
     - pip install markdown
   script:
+    - echo "Rendering for version ${VERSION}"
     # Fill the template with our data
     - python create_package_metadata.py
     # Converting info into info.json
@@ -60,6 +61,11 @@ render info:
     paths:
       - info
       - info.json
+  rules:
+    - if: $CI_COMMIT_TAG
+      variables:
+        VERSION: $CI_COMMIT_TAG
+    - when: always
 
 
 create mkp:
