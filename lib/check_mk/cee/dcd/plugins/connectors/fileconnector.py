@@ -666,17 +666,33 @@ class RestApiClient(HttpApiClient):
 
     def add_folder(self, folder: str):
         path, folder_name = folder.rsplit(PATH_SEPERATOR, 1)
+        parent_path = self.prefix_path(path)
 
         folder_data = {
             "name": folder_name,
             "title": folder_name,
-            "parent": self.prefix_path(path),
+            "parent": parent_path,
         }
 
-        self._api_client._session.post(  # pylint: disable=protected-access
-            "/domain-types/folder_config/collections/all",
-            json=folder_data
+        response = self._api_client._session.post(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all", json=folder_data
         )
+        if response.status_code == 400:
+            # Usually means that we are missing the parent
+            response_json = response.json()
+            try:
+                problematic_fields = response_json["fields"]
+            except KeyError:
+                return  # Silently fail
+
+            if "parent" in problematic_fields:
+                # We trigger the creation of the parent...
+                self.add_folder(parent_path)
+
+                # ...and we re-submit creating the initial folder
+                self._api_client._session.post(  # pylint: disable=protected-access
+                    "/domain-types/folder_config/collections/all", json=folder_data
+                )
 
 
 class Chunker:
