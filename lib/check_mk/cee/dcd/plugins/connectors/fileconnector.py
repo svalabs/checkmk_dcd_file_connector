@@ -63,15 +63,32 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
     NullObject,
 )
 
+try:
+    from functools import cache  # pylint: disable=ungrouped-imports
+except ImportError:
+    from functools import lru_cache
+    cache = lru_cache(maxsize=None)
+
 BUILTIN_ATTRIBUTES = {"locked_by", "labels", "meta_data"}
 IP_ATTRIBUTES = {"ipv4", "ip", "ipaddress"}
 FOLDER_PLACEHOLDER = "undefined"
 PATH_SEPERATOR = "/"
+REPLACABLE_CHARS = "äöüÄÖÜ(),"
+REPLACEMENT_CHAR = "_"
 
 
 def normalize_hostname(hostname: str) -> str:
     "Generate a normalized hostname form"
     return hostname.lower().replace(" ", "_")
+
+
+@cache
+def sanitise_str(value) -> str:
+    "Remove characters that can cause trouble with REST API"
+    for char in REPLACABLE_CHARS:
+        value = value.replace(char, REPLACEMENT_CHAR)
+
+    return value
 
 
 def get_host_label(host: Dict[str, str], hostname_field: str) -> Dict[str, str]:
@@ -182,6 +199,7 @@ class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-me
             "file_format": self.file_format,
             "folder": self.folder,
             "lowercase_everything": self.lowercase_everything,
+            "replace_special_chars": self.replace_special_chars,
             "host_filters": self.host_filters,
             "host_overtake_filters": self.host_overtake_filters,
             "chunk_size": self.chunk_size,
@@ -197,6 +215,7 @@ class FileConnectorConfig(ConnectorConfig):  # pylint: disable=too-few-public-me
         self.file_format: str = connector_cfg.get("file_format", "csv")  # pylint: disable=attribute-defined-outside-init
         self.folder: str = connector_cfg["folder"]  # pylint: disable=attribute-defined-outside-init
         self.lowercase_everything: bool = connector_cfg.get("lowercase_everything", False)  # pylint: disable=attribute-defined-outside-init
+        self.replace_special_chars: bool = connector_cfg.get("replace_special_chars", False)  # pylint: disable=attribute-defined-outside-init
         self.host_filters: List[str] = connector_cfg.get("host_filters", [])  # pylint: disable=attribute-defined-outside-init
         self.host_overtake_filters: List[str] = connector_cfg.get(  # pylint: disable=attribute-defined-outside-init
             "host_overtake_filters", []
@@ -327,8 +346,8 @@ class BVQImporter(FileImporter):
         return new_host
 
 
-class LowercaseImporter:
-    "This modifies an importer to only return lowercased values"
+class ModifyingImporter:
+    "Base class that allows modifying data retrieved from an importer."
 
     def __init__(self, importer):
         self._importer = importer
@@ -336,6 +355,26 @@ class LowercaseImporter:
     @property
     def filepath(self):  # pylint: disable=missing-function-docstring
         return self._importer.filepath
+
+    @property
+    def hosts(self):  # pylint: disable=missing-function-docstring
+        return self._importer.hosts
+
+    @property
+    def fields(self):  # pylint: disable=missing-function-docstring
+        return self._importer.fields
+
+    @property
+    def hostname_field(self):  # pylint: disable=missing-function-docstring
+        return self._importer.hostname_field
+
+    def import_hosts(self):
+        "Import hosts through the importer"
+        return self._importer.import_hosts()
+
+
+class LowercaseImporter(ModifyingImporter):
+    "This modifies an importer to only return lowercased values"
 
     @property
     def hosts(self):  # pylint: disable=missing-function-docstring
@@ -366,10 +405,6 @@ class LowercaseImporter:
 
         return hostname_field.lower()
 
-    def import_hosts(self):
-        "Import hosts through the importer"
-        return self._importer.import_hosts()
-
     @staticmethod
     def lowercase(value):
         "Convert the given value to lowercase if possible"
@@ -379,11 +414,47 @@ class LowercaseImporter:
         return value.lower()
 
 
+class SanitisingImporter(ModifyingImporter):
+    """
+    This modifies an importer to return sanitised values.
+
+    Sanitised values are required because the checkmk REST API does not accept
+    some characters in the object values.
+    The HTTP API did accept these before.
+    """
+
+    @property
+    def hosts(self):  # pylint: disable=missing-function-docstring
+        hosts = self._importer.hosts
+        if hosts is None:
+            return None
+
+        sanitise = self.sanitise
+
+        def sanitise_host(host):
+            return {key: sanitise(value) for key, value in host.items()}
+
+        return [sanitise_host(host) for host in hosts]
+
+    @staticmethod
+    def sanitise(value):
+        "Convert the given value to lowercase if possible"
+        if isinstance(value, (int, float, bool)):
+            return value
+
+        return sanitise_str(value)
+
+
 class BaseApiClient(ABC):
     "Abstract class as a base for creating new API clients"
 
     def __init__(self, api_client):
         self._api_client = api_client
+
+    @property
+    def api_supports_tags(self) -> bool:
+        "Indicates if the used api supports retrieving host tags"
+        return True
 
     @abstractmethod
     def get_hosts(self) -> List[dict]:
@@ -405,7 +476,7 @@ class BaseApiClient(ABC):
         """
 
     @abstractmethod
-    def modify_hosts(self, hosts: List[dict]) -> Dict:
+    def modify_hosts(self, hosts: List[tuple]) -> Dict:
         """
         Modify existing hosts
 
@@ -453,6 +524,10 @@ class BaseApiClient(ABC):
         return True
 
     @abstractmethod
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+
+    @abstractmethod
     def get_folders(self) -> Set[str]:
         "Retrieve existing folders"
 
@@ -464,19 +539,34 @@ class BaseApiClient(ABC):
 class HttpApiClient(BaseApiClient):
     "A client that uses the legacy HTTP API of checkmk"
 
-    # The following lines can be used to debug _api_client.
-    # self._logger.info("Dir: {}".format(dir(self._api_client)))
-    # import inspect
-    # self._logger.info("Sig: {}".format(inspect.getargspec(self._api_client._api_request)))
-
     def get_hosts(self) -> List[dict]:
         return self._api_client.get_all_hosts()
 
     def add_hosts(self, hosts: List[dict]) -> Dict:
         return self._api_client.add_hosts(hosts)
 
-    def modify_hosts(self, hosts: List[dict]) -> Dict:
-        return self._api_client.edit_hosts(hosts)
+    def modify_hosts(self, hosts: List[tuple]) -> Dict:
+        cleaned_hosts = self._remove_meta_data(hosts)
+        return self._api_client.edit_hosts(cleaned_hosts)
+
+    @classmethod
+    def _remove_meta_data(cls, hosts: List[tuple]) -> List[tuple]:
+        """
+        Remove the meta_data field from host attributes to update.
+
+        Since checkmk 2.1 the API will throw an error if the attributes to
+        update contain the field "meta_data".
+        Therefore we remove this field.
+        """
+        cleaned_hosts = []
+        for hostname, update_attributes, delete_attributes in hosts:
+            try:
+                del update_attributes["meta_data"]
+            except KeyError:
+                pass
+            cleaned_hosts.append((hostname, update_attributes, delete_attributes))
+
+        return cleaned_hosts
 
     def delete_hosts(self, hosts: List[dict]):
         self._api_client.delete_hosts(hosts)
@@ -514,6 +604,10 @@ class HttpApiClient(BaseApiClient):
 
         return True
 
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+        return {folder_path for (_, folder_path, _) in hosts}
+
     def get_folders(self) -> Set[str]:
         all_folders = self._api_client._api_request(  # pylint: disable=protected-access
             "webapi.py?action=get_all_folders", {}
@@ -528,6 +622,143 @@ class HttpApiClient(BaseApiClient):
         self._api_client._api_request(  # pylint: disable=protected-access
             "webapi.py?action=add_folder", data
         )
+
+
+class RestApiClient(HttpApiClient):
+    """
+    A client that uses the modern REST API of checkmk
+
+    The new API client mostly behaves like requests.
+    """
+
+    def __init__(self, api_client):
+        super().__init__(api_client)
+        self._api_supports_tags = self._does_api_support_tags()
+
+    def _does_api_support_tags(self) -> bool:
+        """
+        Check if the API supports host tags
+
+        This is mostly checking if https://checkmk.com/de/werk/13964 is
+        available in the current site.
+        """
+        try:
+            version = self._get_checkmk_version()
+        except Exception:  # pylint: disable=broad-except
+            # Problem reading the version
+            return False
+
+        if version >= (2, 1, 0, 17):
+            return True
+
+        # Probably too old
+        return False
+
+    def _get_checkmk_version(self) -> tuple:
+        """
+        Read the checmk version from the API
+
+        Returns a tuple with version information.
+        For example `1.2.3p4` will return `(1, 2, 3, 4)`.
+        """
+        response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/version"
+        )
+        json_response = response.json()
+
+        checkmk_version = json_response["versions"]["checkmk"]
+
+        version, patchrelease = checkmk_version.split("p", 1)
+        patchrelease, _ = patchrelease.split(".", 1)  # might trail in .cee
+        patchrelease = int(patchrelease)
+        major, minor, patch = version.split(".")
+        version = (int(major), int(minor), int(patch), int(patchrelease))
+
+        return version
+
+    @property
+    def api_supports_tags(self) -> bool:
+        return self._api_supports_tags
+
+    def get_host_tags(self) -> List[dict]:
+        # Working around limitations of the builtin client to get the
+        # required results from the API.
+
+        tag_response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/domain-types/host_tag_group/collections/all"
+        )
+        tag_response_json = tag_response.json()
+
+        all_tags = []
+        keys_to_keep = ("id", "title")
+        for host_tag_group in tag_response_json["value"]:
+            tag = {key: host_tag_group[key] for key in keys_to_keep}
+            tag["tags"] = [
+                {key: choice[key] for key in keys_to_keep}
+                for choice in host_tag_group["extensions"]["tags"]
+            ]
+
+            all_tags.append(tag)
+
+        return all_tags
+
+    def get_folders_from_new_hosts(self, hosts: List[dict]) -> Set[str]:
+        "Get the folders from the hosts to create."
+        return {self.prefix_path(folder_path) for (_, folder_path, _) in hosts}
+
+    @staticmethod
+    def prefix_path(path: str) -> str:
+        "Making sure that a path is prefixed with path seperator"
+
+        if not path.startswith(PATH_SEPERATOR):
+            return f"{PATH_SEPERATOR}{path}"
+
+        return path
+
+    def get_folders(self) -> Set[str]:
+        root_folder = "/"
+
+        response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all",
+            params={
+                "parent": root_folder,
+                "recursive": True,
+            },
+        )
+        json_response = response.json()
+        all_folders = [value["extensions"]["path"] for value in json_response["value"]]
+
+        return set(all_folders)
+
+    def add_folder(self, folder: str):
+        path, folder_name = folder.rsplit(PATH_SEPERATOR, 1)
+        parent_path = self.prefix_path(path)
+
+        folder_data = {
+            "name": folder_name,
+            "title": folder_name,
+            "parent": parent_path,
+        }
+
+        response = self._api_client._session.post(  # pylint: disable=protected-access
+            "/domain-types/folder_config/collections/all", json=folder_data
+        )
+        if response.status_code == 400:
+            # Usually means that we are missing the parent
+            response_json = response.json()
+            try:
+                problematic_fields = response_json["fields"]
+            except KeyError:
+                return  # Silently fail
+
+            if "parent" in problematic_fields:
+                # We trigger the creation of the parent...
+                self.add_folder(parent_path)
+
+                # ...and we re-submit creating the initial folder
+                self._api_client._session.post(  # pylint: disable=protected-access
+                    "/domain-types/folder_config/collections/all", json=folder_data
+                )
 
 
 class Chunker:
@@ -674,6 +905,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             self._logger.info("All imported values will be lowercased")
             importer = LowercaseImporter(importer)
 
+        if self._connection_config.replace_special_chars:
+            self._logger.info("All imported values will have their values santized")
+            importer = SanitisingImporter(importer)
+
         return importer
 
     def _execute_phase2(self, phase1_result: Phase1Result):
@@ -702,15 +937,23 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")
         ):
-            self._api_client = self._get_api_client()
+            self._api_client = self._get_api_client()  # pylint: disable=attribute-defined-outside-init
 
             cmk_hosts = self._api_client.get_hosts()
 
-            cmk_tags = {}
+            cmk_tags = None
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
-                host_tags = self._api_client.get_host_tags()
-                cmk_tags = create_hostlike_tags(host_tags)
+                if self._api_client.api_supports_tags:
+                    host_tags = self._api_client.get_host_tags()
+                    cmk_tags = create_hostlike_tags(host_tags)
+                else:
+                    self._logger.warning(
+                        "The used version of the REST API does not provide the "
+                        "required tag access. "
+                        "Support for this has been added as of werk 13964. "
+                        "Tag sync disabled."
+                    )
 
         with self.status.next_step(
             "phase2_update", _("Phase 2.3: Updating config")
@@ -735,7 +978,30 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     def _get_api_client(self):
         "Get a preconfigured API client"
 
-        api_client = HttpApiClient(self._web_api)
+        # The following lines can be used to debug _api_client:
+        # self._logger.info("Dir: {}".format(dir(self._web_api)))
+        # # Check method signature:
+        # import inspect
+        # self._logger.info("Sig: {}".format(inspect.getargspec(self._web_api._api_request)))
+
+        def is_http_client(dcd_client) -> bool:
+            "Checking if the client is for the HTTP API implementation"
+
+            # Attributes only present at old client:
+            # {'_http_post', '_api_request', '_parse_api_response',
+            #  'execute_remote_automation', 'edit_host'}
+            # We only check for the one used for direct API access:
+            if hasattr(dcd_client, "_api_request"):
+                return True
+
+            return False
+
+        if is_http_client(self._web_api):
+            self._logger.debug("Creating a HttpApiClient")
+            api_client = HttpApiClient(self._web_api)
+        else:
+            self._logger.debug("Creating a RestApiClient")
+            api_client = RestApiClient(self._web_api)
 
         chunk_size = self._connection_config.chunk_size
         if chunk_size:
@@ -939,8 +1205,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             if ip_address is not None:
                 attributes["ipaddress"] = ip_address
 
-            tags = create_host_tags(get_host_tags(host))
-            attributes.update(tags)
+            if tag_matcher:
+                tags = create_host_tags(get_host_tags(host))
+                attributes.update(tags)
 
             attributes_from_cmdb = get_host_attributes(host)
             attributes.update(attributes_from_cmdb)
@@ -974,9 +1241,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     if key.startswith(label_prefix)
                 }
 
-            api_tags = get_host_tags(attributes)
-            host_tags = get_host_tags(cmdb_host)
-            future_tags = create_host_tags(host_tags)
+            if tag_matcher:
+                api_tags = get_host_tags(attributes)
+                host_tags = get_host_tags(cmdb_host)
+                future_tags = create_host_tags(host_tags)
 
             existing_ip = attributes.get("ipaddress")
             future_ip = get_ip_address(cmdb_host)
@@ -996,7 +1264,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     self._logger.debug("Labels require update")
                     return True
 
-                if needs_modification(api_tags, future_tags):
+                if tag_matcher and needs_modification(api_tags, future_tags):
                     self._logger.debug("Tags require update")
                     return True
 
@@ -1016,7 +1284,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
                 attributes_to_unset = []
                 if future_ip is None:
-                    attributes_to_unset.append("ipaddress")
+                    if existing_ip is not None:
+                        attributes_to_unset.append("ipaddress")
                 else:
                     attributes["ipaddress"] = future_ip
 
@@ -1041,7 +1310,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             return tuple()  # For consistent return type
 
-        tag_matcher = TagMatcher(cmk_tags)
+        tag_matcher = TagMatcher(cmk_tags) if cmk_tags is not None else None
         hosts_to_create = []
         hosts_to_modify = []
         for host in cmdb_hosts:
@@ -1093,20 +1362,20 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     def _process_folders(self, hosts: List[dict]):
         # Folders are represented as a string.
-        # Paths are written Unix style: 'folder/subfolder'
-        host_folders = self._get_folders(hosts)
+        # Paths for the HTTP API are written Unix style without prefixed slash: 'folder/subfolder'
+        # When using the REST API they have to be '/folder/subfolder'
+        # We let the API client decide how the folders should be formatted.
+        host_folders = self._api_client.get_folders_from_new_hosts(hosts)
+        self._logger.debug(
+            "Found the following folders from missing hosts: %s",
+            host_folders
+        )
         existing_folders = self._api_client.get_folders()
+        self._logger.debug("Existing folders: %s", existing_folders)
 
         folders_to_create = host_folders - existing_folders
         self._logger.debug("Creating the following folders: %s", folders_to_create)
         self._create_folders(sorted(folders_to_create))
-
-    def _get_folders(self, hosts: List[dict]) -> Set[str]:
-        "Get the folders from the hosts to create."
-        folders = {folder_path for (_, folder_path, _) in hosts}
-        self._logger.debug("Found the following folders: %s", folders)
-
-        return folders
 
     def _create_folders(self, folders: List[str]) -> List[str]:
         if not folders:

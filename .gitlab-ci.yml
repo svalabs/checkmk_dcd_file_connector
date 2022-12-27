@@ -6,7 +6,7 @@ stages:
 
 
 variables:
-  MKP_FILENAME: 'fileconnector-${CI_COMMIT_REF_NAME}.mkp'
+  MKP_FILENAME: 'fileconnector-${CI_COMMIT_REF_SLUG}.mkp'
 
 
 pylint:
@@ -48,7 +48,7 @@ render info:
   stage: test
   image: python:3-slim
   variables:
-    VERSION: $CI_COMMIT_REF_NAME
+    VERSION: $CI_COMMIT_REF_SLUG
   before_script:
     - pip install markdown
   script:

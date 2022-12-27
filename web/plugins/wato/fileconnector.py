@@ -189,6 +189,16 @@ class FileConnectorParameters(ConnectorParameters):  # pylint: disable=missing-c
                         "This results in all imported data being lowercased."
                     ),
                 )),
+                ("replace_special_chars", Checkbox(
+                    default_value=False,
+                    title=_("Replace characters to improve API compability"),
+                    help=_(
+                        "Replaces characters that might cause problems when"
+                        "used with the REST API by an underscore. "
+                        "Due to possible performance impacts this is only "
+                        "recommended to use if you are running into problems."
+                    ),
+                )),
             ],
             optional_keys=[
                 "host_filters",

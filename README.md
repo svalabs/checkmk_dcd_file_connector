@@ -26,6 +26,7 @@ This is achieved by using column or field names with special prefixes.
 If you prefix the column with `label_` the contents of the column will be treated as a label. This is the default behaviour if neither one of the specific keywords nor another prefix is used.
 
 You can prefix a column name with `tag_` for an explicit handling as a tag (tag group). Please make sure that you reference the tag ID so that a match can be made, i.e. to match the ID `flower` you have to write `tag_flower`.
+Handling of tags is possible with checkmk instances using the deprecated web API (until 2.1) or with instances that support [werk 13964](https://checkmk.com/de/werk/13964).
 
 If you prefix the column with `attr_` the contents will be handled as an attribute. Please make sure to  Missing attributes have to be created manually, the connector will not create these.
 
