@@ -609,6 +609,7 @@ class RestApiClient(HttpApiClient):
 
         try:
             version, patchrelease = checkmk_version.split("p", 1)
+            patchrelease, _ = patchrelease.split(".", 1)  # might trail in .cee
             patchrelease = int(patchrelease)
             major, minor, patch = version.split(".")
             version = (int(major), int(minor), int(patch), int(patchrelease))
