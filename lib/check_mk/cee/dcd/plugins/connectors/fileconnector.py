@@ -64,7 +64,7 @@ from cmk.cee.dcd.plugins.connectors.connectors_api.v1 import (  # noqa: F401 # p
 )
 
 try:
-    from functools import cache
+    from functools import cache  # pylint: disable=ungrouped-imports
 except ImportError:
     from functools import lru_cache
     cache = lru_cache(maxsize=None)
