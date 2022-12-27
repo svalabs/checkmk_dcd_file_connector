@@ -626,20 +626,21 @@ class RestApiClient(HttpApiClient):
         # Working around limitations of the builtin client to get the
         # required results from the API.
 
-        tag_response = self._api_client._session.get("/domain-types/host_tag_group/collections/all")  # pylint: disable=protected-access
+        tag_response = self._api_client._session.get(
+            "/domain-types/host_tag_group/collections/all"
+        )  # pylint: disable=protected-access
+        tag_response_json = tag_response.json()
 
-        # TODO: the host_tag_group collection only returns us the title of a tag group.
-        # We require the ID for the following calls and therefore this won't run as expected.
-        host_tag_group_names = set(
-            d["title"] for d in tag_response.json()["value"]
-        )
         all_tags = []
         keys_to_keep = ("id", "title")
-        for host_tag_name in host_tag_group_names:
-            host_tag = self._api_client._session.get(f"/objects/host_tag_group/{host_tag_name}")  # pylint: disable=protected-access
+        for host_tag_group in tag_response_json["value"]:
+            tag = {key: host_tag_group[key] for key in keys_to_keep}
+            tag["tags"] = [
+                {key: choice[key] for key in keys_to_keep}
+                for choice in host_tag_group["extensions"]["tags"]
+            ]
 
-            host_tag_dict = host_tag.json()
-            all_tags.append({key: host_tag_dict[key] for key in keys_to_keep})
+            all_tags.append(tag)
 
         return all_tags
 
