@@ -387,6 +387,7 @@ class BaseApiClient(ABC):
 
     @property
     def api_supports_tags(self) -> bool:
+        "Indicates if the used api supports retrieving host tags"
         return True
 
     @abstractmethod
@@ -564,28 +565,74 @@ class RestApiClient(HttpApiClient):
     The new API client mostly behaves like requests.
     """
 
+    def __init__(self, api_client):
+        super().__init__(api_client)
+        self._api_supports_tags = self._does_api_support_tags()
+
+    def _does_api_support_tags(self) -> bool:
+        """
+        Check if the API supports host tags
+
+        This is mostly checking if https://checkmk.com/de/werk/13964 is
+        available in the current site.
+        """
+        try:
+            version = self._get_checkmk_version()
+        except Exception:  # pylint: disable=broad-except
+            # Problem reading the version
+            return False
+
+        if version >= (2, 1, 0, 17):
+            return True
+
+        # Probably too old
+        return False
+
+    def _get_checkmk_version(self) -> tuple:
+        """
+        Read the checmk version from the API
+
+        Returns a tuple with version information.
+        For example `1.2.3p4` will return `(1, 2, 3, 4)`.
+        """
+        response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/version"
+        )
+        json_response = response.json()
+
+        checkmk_version = json_response["versions"]["checkmk"]
+
+        version, patchrelease = checkmk_version.split("p", 1)
+        patchrelease, _ = patchrelease.split(".", 1)  # might trail in .cee
+        patchrelease = int(patchrelease)
+        major, minor, patch = version.split(".")
+        version = (int(major), int(minor), int(patch), int(patchrelease))
+
+        return version
+
     @property
     def api_supports_tags(self) -> bool:
-        return False
+        return self._api_supports_tags
 
     def get_host_tags(self) -> List[dict]:
         # Working around limitations of the builtin client to get the
         # required results from the API.
 
-        tag_response = self._api_client._session.get("/domain-types/host_tag_group/collections/all")  # pylint: disable=protected-access
-
-        # TODO: the host_tag_group collection only returns us the title of a tag group.
-        # We require the ID for the following calls and therefore this won't run as expected.
-        host_tag_group_names = set(
-            d["title"] for d in tag_response.json()["value"]
+        tag_response = self._api_client._session.get(  # pylint: disable=protected-access
+            "/domain-types/host_tag_group/collections/all"
         )
+        tag_response_json = tag_response.json()
+
         all_tags = []
         keys_to_keep = ("id", "title")
-        for host_tag_name in host_tag_group_names:
-            host_tag = self._api_client._session.get(f"/objects/host_tag_group/{host_tag_name}")  # pylint: disable=protected-access
+        for host_tag_group in tag_response_json["value"]:
+            tag = {key: host_tag_group[key] for key in keys_to_keep}
+            tag["tags"] = [
+                {key: choice[key] for key in keys_to_keep}
+                for choice in host_tag_group["extensions"]["tags"]
+            ]
 
-            host_tag_dict = host_tag.json()
-            all_tags.append({key: host_tag_dict[key] for key in keys_to_keep})
+            all_tags.append(tag)
 
         return all_tags
 
@@ -804,11 +851,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         with self.status.next_step(
             "phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")
         ):
-            self._api_client = self._get_api_client()
+            self._api_client = self._get_api_client()  # pylint: disable=attribute-defined-outside-init
 
             cmk_hosts = self._api_client.get_hosts()
 
-            cmk_tags = {}
+            cmk_tags = None
             fields_contain_tags = any(is_tag(name) for name in fieldnames)
             if fields_contain_tags:
                 if self._api_client.api_supports_tags:
@@ -816,9 +863,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     cmk_tags = create_hostlike_tags(host_tags)
                 else:
                     self._logger.warning(
-                        "The REST API does not provide the required tag access."
-                        "There currently is a good way to retrieve the required"
-                        " information (tag ID and possible values)."
+                        "The used version of the REST API does not provide the "
+                        "required tag access. "
+                        "Support for this has been added as of werk 13964. "
                         "Tag sync disabled."
                     )
 
@@ -1072,8 +1119,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             if ip_address is not None:
                 attributes["ipaddress"] = ip_address
 
-            tags = create_host_tags(get_host_tags(host))
-            attributes.update(tags)
+            if tag_matcher:
+                tags = create_host_tags(get_host_tags(host))
+                attributes.update(tags)
 
             attributes_from_cmdb = get_host_attributes(host)
             attributes.update(attributes_from_cmdb)
@@ -1107,9 +1155,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     if key.startswith(label_prefix)
                 }
 
-            api_tags = get_host_tags(attributes)
-            host_tags = get_host_tags(cmdb_host)
-            future_tags = create_host_tags(host_tags)
+            if tag_matcher:
+                api_tags = get_host_tags(attributes)
+                host_tags = get_host_tags(cmdb_host)
+                future_tags = create_host_tags(host_tags)
 
             existing_ip = attributes.get("ipaddress")
             future_ip = get_ip_address(cmdb_host)
@@ -1129,7 +1178,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     self._logger.debug("Labels require update")
                     return True
 
-                if needs_modification(api_tags, future_tags):
+                if tag_matcher and needs_modification(api_tags, future_tags):
                     self._logger.debug("Tags require update")
                     return True
 
@@ -1175,7 +1224,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             return tuple()  # For consistent return type
 
-        tag_matcher = TagMatcher(cmk_tags)
+        tag_matcher = TagMatcher(cmk_tags) if cmk_tags is not None else None
         hosts_to_create = []
         hosts_to_modify = []
         for host in cmdb_hosts:
