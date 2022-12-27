@@ -387,6 +387,7 @@ class BaseApiClient(ABC):
 
     @property
     def api_supports_tags(self) -> bool:
+        "Indicates if the used api supports retrieving host tags"
         return True
 
     @abstractmethod
