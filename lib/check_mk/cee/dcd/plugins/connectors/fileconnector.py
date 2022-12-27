@@ -578,7 +578,7 @@ class RestApiClient(HttpApiClient):
         """
         try:
             version = self._get_checkmk_version()
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             # Problem reading the version
             return False
 
