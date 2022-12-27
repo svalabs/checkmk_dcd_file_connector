@@ -564,9 +564,62 @@ class RestApiClient(HttpApiClient):
     The new API client mostly behaves like requests.
     """
 
+    def __init__(self, api_client):
+        super().__init__(api_client)
+        self._api_supports_tags = self._does_api_support_tags()
+
+    def _does_api_support_tags(self) -> bool:
+        """
+        Check if the API supports host tags
+
+        This is mostly checking if https://checkmk.com/de/werk/13964 is
+        available in the current site.
+        """
+        try:
+            version = self._get_checkmk_version()
+        except Exception:
+            # Problem reading the version
+            return False
+
+        if version >= (2, 1, 0, 17):
+            return True
+
+        # Probably too old
+        return False
+
+    def _get_checkmk_version(self) -> tuple:
+        """
+        Read the checmk version from the API
+
+        Returns a tuple with version information.
+        For example `1.2.3p4` will return `(1, 2, 3, 4)`.
+        """
+        try:
+            response = self._api_client._session.get(
+                "/version"
+            )  # pylint: disable=protected-access
+            json_response = response.json()
+        except Exception:  # Something is wrong with the API call or response
+            raise
+
+        try:
+            checkmk_version = json_response["versions"]["checkmk"]
+        except KeyError:  # Our dict isn't built as we expect it
+            raise
+
+        try:
+            version, patchrelease = checkmk_version.split("p", 1)
+            patchrelease = int(patchrelease)
+            major, minor, patch = version.split(".")
+            version = (int(major), int(minor), int(patch), int(patchrelease))
+        except ValueError:  # Not the format we'd expect
+            raise
+
+        return version
+
     @property
     def api_supports_tags(self) -> bool:
-        return False
+        return self._api_supports_tags
 
     def get_host_tags(self) -> List[dict]:
         # Working around limitations of the builtin client to get the
