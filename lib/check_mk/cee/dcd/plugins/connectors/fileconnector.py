@@ -594,9 +594,9 @@ class RestApiClient(HttpApiClient):
         Returns a tuple with version information.
         For example `1.2.3p4` will return `(1, 2, 3, 4)`.
         """
-        response = self._api_client._session.get(
+        response = self._api_client._session.get(  # pylint: disable=protected-access
             "/version"
-        )  # pylint: disable=protected-access
+        )
         json_response = response.json()
 
         checkmk_version = json_response["versions"]["checkmk"]
@@ -617,9 +617,9 @@ class RestApiClient(HttpApiClient):
         # Working around limitations of the builtin client to get the
         # required results from the API.
 
-        tag_response = self._api_client._session.get(
+        tag_response = self._api_client._session.get(  # pylint: disable=protected-access
             "/domain-types/host_tag_group/collections/all"
-        )  # pylint: disable=protected-access
+        )
         tag_response_json = tag_response.json()
 
         all_tags = []
