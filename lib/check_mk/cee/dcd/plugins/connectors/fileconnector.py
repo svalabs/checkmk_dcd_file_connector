@@ -1289,7 +1289,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 else:
                     attributes["ipaddress"] = future_ip
 
-                attributes.update(future_tags)
+                if tag_matcher:
+                    attributes.update(future_tags)
+
                 attributes.update(future_attributes)
 
                 if overtake_host:
