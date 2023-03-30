@@ -122,3 +122,15 @@ def test_getting_host_attributes():
     assert len(host) == 2
     assert host["destination"] == "San Remo"
     assert host["description"] == "Fantastic race"
+
+
+@pytest.mark.parametrize("fields, expected_result",[
+    ([], False),
+    (["Name", "Adresse", "Boot"], False),
+    (["Name", "Beer", "ipa"], False),  # ipa != ip
+    (["ipv4", "Host"], True),
+    (["Host", "ip"], True),
+    (["Host", "ipaddress", "another field"], True),
+])
+def test_fields_contain_ip_addresses(fields, expected_result):
+    assert expected_result == fileconnector.fields_contain_ip_addresses(fields)
