@@ -156,6 +156,15 @@ def get_ip_address(host: Dict[str, str]) -> Optional[str]:
         return ip_address.strip()
 
 
+def fields_contain_ip_addresses(fields: List[str]) -> bool:
+    "Do these fields contain IP address fields?"
+    for item in fields:
+        if item in IP_ATTRIBUTES:
+            return True
+
+    return False
+
+
 def get_host_tags(attributes: Dict[str, str]) -> Dict[str, str]:
     "Get attributes of the host from the given dict"
     return {attr: value for attr, value in attributes.items() if is_tag(attr)}
@@ -933,6 +942,9 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             cmdb_hosts = phase1_result.connector_object.hosts
             fieldnames = phase1_result.connector_object.fieldnames
             hostname_field = phase1_result.connector_object.hostname_field
+            import_contains_ip_addresses = fields_contain_ip_addresses(
+                phase1_result.connector_object.fieldnames
+            )
 
         with self.status.next_step(
             "phase2_fetch_hosts", _("Phase 2.2: Fetching existing hosts")
@@ -959,7 +971,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             "phase2_update", _("Phase 2.3: Updating config")
         ) as step:
             hosts_changed, change_message = self._update_config(
-                cmdb_hosts, cmk_hosts, hostname_field, cmk_tags
+                cmdb_hosts,
+                cmk_hosts,
+                hostname_field,
+                cmk_tags,
+                import_contains_ip_addresses,
             )
             self._logger.info(change_message)
             step.finish(change_message)
@@ -1010,9 +1026,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
         return api_client
 
-    def _update_config(self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags):
+    def _update_config(
+        self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags, update_ips: bool = False
+    ):
         hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(
-            cmdb_hosts, cmk_hosts, hostname_field, cmk_tags
+            cmdb_hosts, cmk_hosts, hostname_field, cmk_tags, update_ips
         )
 
         if self._connection_config.label_path_template:
@@ -1042,6 +1060,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         cmk_hosts: Dict[str, dict],
         hostname_field: str,
         cmk_tags: Dict[str, List[str]],
+        update_ips: bool = False,
     ) -> Tuple[list, list, list]:
         """
         Partition the hosts into three groups:
@@ -1268,7 +1287,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                     self._logger.debug("Tags require update")
                     return True
 
-                if ip_needs_modification(existing_ip, future_ip):
+                if update_ips and ip_needs_modification(existing_ip, future_ip):
                     self._logger.debug("IP requires update")
                     return True
 
@@ -1283,11 +1302,12 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 attributes["labels"] = api_label
 
                 attributes_to_unset = []
-                if future_ip is None:
-                    if existing_ip is not None:
-                        attributes_to_unset.append("ipaddress")
-                else:
-                    attributes["ipaddress"] = future_ip
+                if update_ips:
+                    if future_ip is None:
+                        if existing_ip is not None:
+                            attributes_to_unset.append("ipaddress")
+                    else:
+                        attributes["ipaddress"] = future_ip
 
                 if tag_matcher:
                     attributes.update(future_tags)
