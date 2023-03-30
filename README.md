@@ -17,6 +17,7 @@ You will have to specify an existing file that will be used for importing.
 Alongside that you have to choose the format your data is in.
 
 The plugin tries to detect IP addresses and set them accordingly on your hosts. Field names that are assumed to contain an IP are `ipv4`, `ip`, `ipaddress`.
+If an import file does not contain any of these fields existing IPs will not be changed.
 
 ### Managing different host properties
 
