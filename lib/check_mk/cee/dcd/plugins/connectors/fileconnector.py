@@ -1307,7 +1307,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             comparable_attributes = clean_cmk_attributes(attributes)
 
             api_label = attributes.get("labels", {})
-            
+
             future_label = get_host_label(cmdb_host, hostname_field)
             future_label = add_prefix_to_labels(future_label, label_prefix)
 
