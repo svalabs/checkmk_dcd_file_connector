@@ -1291,7 +1291,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             if folder_path != absolute_future_folder_path:
                 self._logger.debug("Folder paths require update")
-                return (hostname, future_folder_path, None)
+                return (hostname, future_folder_path)
             return tuple()
 
         def get_host_modification_tuple(
@@ -1597,7 +1597,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             ", ".join(h[0] for h in hosts_to_move),
         )
         succeeded = []
-        for (host, path, _) in hosts_to_move:
+        for (host, path) in hosts_to_move:
             result, error = self._api_client.move_host(host, path)
 
             if result:
