@@ -1605,7 +1605,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             else:
                 self._logger.error('Moving of "%s" failed: %s', host, error)
 
-        return succeeded    
+        return succeeded
 
     def _modify_hosts(self, hosts_to_modify: List[tuple]) -> List[str]:
         "Modify the given hosts. Returns the IDs of modified hosts."
