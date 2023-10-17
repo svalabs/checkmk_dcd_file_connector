@@ -730,7 +730,6 @@ class RestApiClient(HttpApiClient):
             return f"{PATH_SEPERATOR}{path}"
 
         return path
-    
 
     def move_host(self, host: str, folder: str):
         def get_host_etag(self, host: str):
@@ -756,12 +755,10 @@ class RestApiClient(HttpApiClient):
 
         json_response = response.json()
 
-
         if response.status_code < 400:
             return (True, None)
         else:
             return (False, json_response)
-
 
     def get_folders(self) -> Set[str]:
         root_folder = "/"
@@ -1275,7 +1272,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             return (hostname, folder_path, attributes)
 
-
         def get_host_move_tuple(
             existing_host: dict,
             cmdb_host: dict,
@@ -1291,14 +1287,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             folder_path = existing_host["folder"]
 
             self._logger.debug(f"Old Path: {folder_path}; New Path: /{future_folder_path}")
-            
 
             if folder_path != "/" + future_folder_path:
                 self._logger.debug("Folder paths require update")
                 return (hostname, future_folder_path, None)
             return tuple()
-
-            
 
         def get_host_modification_tuple(
             existing_host: dict,
@@ -1314,7 +1307,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             comparable_attributes = clean_cmk_attributes(attributes)
 
             api_label = attributes.get("labels", {})
-
             
             future_label = get_host_label(cmdb_host, hostname_field)
             future_label = add_prefix_to_labels(future_label, label_prefix)
@@ -1347,7 +1339,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 if needs_modification(comparable_attributes, future_attributes):
                     self._logger.debug("Attributes require update")
                     return True
-
 
                 if needs_modification(api_label, future_label):
                     self._logger.debug("Labels require update")
