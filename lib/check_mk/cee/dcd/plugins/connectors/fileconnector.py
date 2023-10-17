@@ -1277,8 +1277,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             cmdb_host: dict,
             hostname_field: str,
         ) -> Tuple[str, str]:
-            base_folder_path = self._connection_config.folder
-
             hostname = normalize_hostname(cmdb_host[hostname_field])
 
             future_label = get_host_label(cmdb_host, hostname_field)
