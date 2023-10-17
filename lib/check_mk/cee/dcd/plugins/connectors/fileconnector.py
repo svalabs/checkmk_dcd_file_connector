@@ -1434,7 +1434,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 overtake_host=bool(hostname in hosts_to_overtake),
                 label_prefix=self._connection_config.label_prefix,
             )
-            if host_modifications: # Else no changes
+            if host_modifications:  # Else no changes
                 hosts_to_modify.append(host_modifications)
 
             self._logger.debug("Checking folder of managed host %s", hostname)
@@ -1443,9 +1443,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 host,
                 hostname_field
             )
-            if host_move: # Else no changes
+            if host_move:  # Else no changes
                 hosts_to_move.append(host_move)
-
 
         cmdb_hostnames = set(
             normalize_hostname(host[hostname_field]) for host in cmdb_hosts
