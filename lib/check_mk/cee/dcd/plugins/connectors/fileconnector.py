@@ -1285,10 +1285,11 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             future_folder_path = get_folder_path(future_label)
 
             folder_path = existing_host["folder"]
+            absolute_future_folder_path = f"/{future_folder_path}"
 
-            self._logger.debug(f"Old Path: {folder_path}; New Path: /{future_folder_path}")
+            self._logger.debug(f"Old Path: {folder_path}; New Path: {absolute_future_folder_path}")
 
-            if folder_path != "/" + future_folder_path:
+            if folder_path != absolute_future_folder_path:
                 self._logger.debug("Folder paths require update")
                 return (hostname, future_folder_path, None)
             return tuple()
