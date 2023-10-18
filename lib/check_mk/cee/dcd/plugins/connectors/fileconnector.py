@@ -504,6 +504,10 @@ class BaseApiClient(ABC):
         "Delete existing hosts"
 
     @abstractmethod
+    def move_host(self, host: str, path: str):
+        "Move existing hosts"
+
+    @abstractmethod
     def get_host_tags(self) -> List[dict]:
         """
         Retrieve the existing host tags.
@@ -553,6 +557,9 @@ class HttpApiClient(BaseApiClient):
 
     def add_hosts(self, hosts: List[dict]) -> Dict:
         return self._api_client.add_hosts(hosts)
+
+    def move_host(self, hosts: str, path: str) -> tuple:
+        return self._api_client.move_host(host, path)
 
     def modify_hosts(self, hosts: List[tuple]) -> Dict:
         cleaned_hosts = self._remove_meta_data(hosts)
@@ -723,6 +730,38 @@ class RestApiClient(HttpApiClient):
             return f"{PATH_SEPERATOR}{path}"
 
         return path
+    
+
+    def move_host(self, host: str, folder: str):
+        def get_host_etag(self, host: str):
+            response = self._api_client._session.get(  # pylint: disable=protected-access
+                f"/objects/host_config/{host}",
+            )
+            return response.headers.get("etag")
+
+        etag = get_host_etag(self, host)
+
+        folder = self.prefix_path(folder)
+
+        response = self._api_client._session.post(  # pylint: disable=protected-access
+            f"/objects/host_config/{host}/actions/move/invoke",
+            headers={
+                "If-Match": f'{etag}',
+                "Content-Type": "application/json"
+            },
+            json={
+                "target_folder": folder
+            }
+        )
+
+        json_response = response.json()
+
+
+        if response.status_code < 400:
+            return (True, None)
+        else:
+            return (False, json_response)
+
 
     def get_folders(self) -> Set[str]:
         root_folder = "/"
@@ -1029,7 +1068,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     def _update_config(
         self, cmdb_hosts, cmk_hosts, hostname_field, cmk_tags, update_ips: bool = False
     ):
-        hosts_to_create, hosts_to_modify, hosts_to_delete = self._partition_hosts(
+        hosts_to_create, hosts_to_modify, hosts_to_delete, hosts_to_move = self._partition_hosts(
             cmdb_hosts, cmk_hosts, hostname_field, cmk_tags, update_ips
         )
 
@@ -1037,19 +1076,22 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             # Creating possibly missing folders if we rely on
             # labels for the path creation.
             self._process_folders(hosts_to_create)
+            self._process_folders(hosts_to_move)
 
         created_host_names = self._create_new_hosts(hosts_to_create)
         modified_host_names = self._modify_existing_hosts(hosts_to_modify)
         deleted_host_names = self._delete_hosts(hosts_to_delete)
+        moved_host_names = self._move_hosts(hosts_to_move)
 
         changes_to_hosts = bool(
-            created_host_names or modified_host_names or deleted_host_names
+            created_host_names or modified_host_names or deleted_host_names or moved_host_names
         )
         change_message = self._get_change_message(
             changes_to_hosts,
             created_host_names,
             modified_host_names,
             deleted_host_names,
+            moved_host_names
         )
 
         return changes_to_hosts, change_message
@@ -1233,6 +1275,31 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             return (hostname, folder_path, attributes)
 
+
+        def get_host_move_tuple(
+            existing_host: dict,
+            cmdb_host: dict,
+            hostname_field: str,
+        ) -> Tuple[str, str]:
+            base_folder_path = self._connection_config.folder
+
+            hostname = normalize_hostname(cmdb_host[hostname_field])
+
+            future_label = get_host_label(cmdb_host, hostname_field)
+            future_folder_path = get_folder_path(future_label)
+
+            folder_path = existing_host["folder"]
+
+            self._logger.debug(f"Old Path: {folder_path}; New Path: /{future_folder_path}")
+            
+
+            if folder_path != "/" + future_folder_path:
+                self._logger.debug("Folder paths require update")
+                return (hostname, future_folder_path, None)
+            return tuple()
+
+            
+
         def get_host_modification_tuple(
             existing_host: dict,
             cmdb_host: dict,
@@ -1248,8 +1315,10 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
             api_label = attributes.get("labels", {})
 
+            
             future_label = get_host_label(cmdb_host, hostname_field)
             future_label = add_prefix_to_labels(future_label, label_prefix)
+
             if label_prefix:
                 # We only manage labels that match our prefix
                 unmodified_api_label = api_label.copy()
@@ -1278,6 +1347,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 if needs_modification(comparable_attributes, future_attributes):
                     self._logger.debug("Attributes require update")
                     return True
+
 
                 if needs_modification(api_label, future_label):
                     self._logger.debug("Labels require update")
@@ -1335,6 +1405,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         tag_matcher = TagMatcher(cmk_tags) if cmk_tags is not None else None
         hosts_to_create = []
         hosts_to_modify = []
+        hosts_to_move = []
         for host in cmdb_hosts:
             hostname = normalize_hostname(host[hostname_field])
             if not host_matches_filters(hostname):
@@ -1363,9 +1434,18 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
                 overtake_host=bool(hostname in hosts_to_overtake),
                 label_prefix=self._connection_config.label_prefix,
             )
-            if not host_modifications:
-                continue  # No changes
-            hosts_to_modify.append(host_modifications)
+            if host_modifications: # Else no changes
+                hosts_to_modify.append(host_modifications)
+
+            self._logger.debug("Checking folder of managed host %s", hostname)
+            host_move = get_host_move_tuple(
+                existing_host,
+                host,
+                hostname_field
+            )
+            if host_move: # Else no changes
+                hosts_to_move.append(host_move)
+
 
         cmdb_hostnames = set(
             normalize_hostname(host[hostname_field]) for host in cmdb_hosts
@@ -1374,13 +1454,14 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         hosts_to_delete = list(set(hosts_managed_by_plugin) - cmdb_hostnames)
 
         self._logger.info(
-            "Planned host actions: %i to create, %i to modify, %i to delete",
+            "Planned host actions: %i to create, %i to modify, %i to move, %i to delete",
             len(hosts_to_create),
             len(hosts_to_modify),
+            len(hosts_to_move),
             len(hosts_to_delete),
         )
 
-        return hosts_to_create, hosts_to_modify, hosts_to_delete
+        return hosts_to_create, hosts_to_modify, hosts_to_delete, hosts_to_move
 
     def _process_folders(self, hosts: List[dict]):
         # Folders are represented as a string.
@@ -1389,7 +1470,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         # We let the API client decide how the folders should be formatted.
         host_folders = self._api_client.get_folders_from_new_hosts(hosts)
         self._logger.debug(
-            "Found the following folders from missing hosts: %s",
+            "Found the following folders from missing or to be moved hosts: %s",
             host_folders
         )
         existing_folders = self._api_client.get_folders()
@@ -1517,6 +1598,25 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         self._logger.debug("Modified %i hosts", len(modified_host_names))
         return modified_host_names
 
+    def _move_hosts(self, hosts_to_move: List[tuple]) -> List[str]:
+        "Moves the given hosts. Returns the IDs of modified hosts."
+        self._logger.debug(
+            "Moving %i hosts (%s)",
+            len(hosts_to_move),
+            ", ".join(h[0] for h in hosts_to_move),
+        )
+        succeeded = []
+        for (host, path, _) in hosts_to_move:
+            result, error = self._api_client.move_host(host, path)
+
+            if result:
+                succeeded.append(host)
+                self._logger.info('Moved "%s" to %s', host, path)
+            else:
+                self._logger.error('Moving of "%s" failed: %s', host, error)
+
+        return succeeded    
+
     def _modify_hosts(self, hosts_to_modify: List[tuple]) -> List[str]:
         "Modify the given hosts. Returns the IDs of modified hosts."
         self._logger.debug(
@@ -1551,6 +1651,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         created_host_names: list,
         modified_host_names: list,
         deleted_host_names: list,
+        moved_host_names: list,
     ):
         changes_to_hosts = bool(
             created_host_names or modified_host_names or deleted_host_names
