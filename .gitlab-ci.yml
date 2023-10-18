@@ -37,8 +37,7 @@ run tests:
   before_script:
     - pip install pytest pytest-cov
   script:
-    - pytest tests/
-    - coverage xml
+    - pytest --cov=fileconnector --cov-report term --cov-report xml:coverage.xml tests/
   artifacts:
     reports:
       junit: coverage.xml
