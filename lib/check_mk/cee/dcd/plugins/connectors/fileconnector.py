@@ -1083,7 +1083,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
             created_host_names or modified_host_names or deleted_host_names or moved_host_names
         )
         change_message = self._get_change_message(
-            changes_to_hosts,
             created_host_names,
             modified_host_names,
             deleted_host_names,
@@ -1635,7 +1634,6 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _get_change_message(
-        changes_to_hosts: bool,
         created_host_names: list,
         modified_host_names: list,
         deleted_host_names: list,
