@@ -731,7 +731,7 @@ class RestApiClient(HttpApiClient):
 
         return path
 
-    def move_host(self, host: str, folder: str):
+    def move_host(self, host: str, path: str):
         def get_host_etag(self, host: str):
             response = self._api_client._session.get(  # pylint: disable=protected-access
                 f"/objects/host_config/{host}",
@@ -740,7 +740,7 @@ class RestApiClient(HttpApiClient):
 
         etag = get_host_etag(self, host)
 
-        folder = self.prefix_path(folder)
+        folder = self.prefix_path(path)
 
         response = self._api_client._session.post(  # pylint: disable=protected-access
             f"/objects/host_config/{host}/actions/move/invoke",
