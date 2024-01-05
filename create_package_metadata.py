@@ -3,7 +3,7 @@
 
 # Utility to render our template and fill with the desired values.
 #
-# Copyright (C) 2021-2023 SVA System Vertrieb Alexander GmbH
+# Copyright (C) 2021-2024 SVA System Vertrieb Alexander GmbH
 #                         Niko Wenselowski <niko.wenselowski@sva.de>
 
 # This program is free software; you can redistribute it and/or
