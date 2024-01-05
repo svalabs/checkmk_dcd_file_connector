@@ -731,7 +731,17 @@ class RestApiClient(HttpApiClient):
 
         return path
 
-    def move_host(self, host: str, path: str):
+    def move_host(self, host: str, path: str) -> tuple:
+        """
+        Move an existing host to a new path
+
+        The returned tuple contains two elements.
+        The first inidicates if the operation was a success.
+        The second contains an error message if a problem was encountered.
+        If the operation failed the first element is `false` and
+        the second value contains the error message.
+        """
+
         def get_host_etag(self, host: str):
             response = self._api_client._session.get(  # pylint: disable=protected-access
                 f"/objects/host_config/{host}",
