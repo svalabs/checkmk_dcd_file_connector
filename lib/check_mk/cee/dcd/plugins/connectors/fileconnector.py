@@ -1588,7 +1588,7 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         return modified_host_names
 
     def _move_hosts(self, hosts_to_move: List[tuple]) -> List[str]:
-        "Moves the given hosts. Returns the IDs of modified hosts."
+        "Moves the given hosts. Returns the IDs of moved hosts."
         self._logger.debug(
             "Moving %i hosts (%s)",
             len(hosts_to_move),
