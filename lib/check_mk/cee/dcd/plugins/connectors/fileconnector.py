@@ -1640,7 +1640,8 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
         modified_host_names: list,
         deleted_host_names: list,
         moved_host_names: list,
-    ):
+    ) -> str:
+        "Get a message describing the changes that have been performed"
         changes_to_hosts = bool(
             created_host_names or modified_host_names or deleted_host_names
         )
