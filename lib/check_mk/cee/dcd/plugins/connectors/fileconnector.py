@@ -765,9 +765,10 @@ class RestApiClient(HttpApiClient):
 
         if response.status_code < 400:
             return (True, None)
-        else:
-            json_response = response.json()
-            return (False, json_response)
+
+        # We encountered an error
+        json_response = response.json()
+        return (False, json_response)
 
     def get_folders(self) -> Set[str]:
         root_folder = "/"
