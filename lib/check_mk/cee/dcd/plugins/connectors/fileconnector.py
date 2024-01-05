@@ -505,7 +505,7 @@ class BaseApiClient(ABC):
 
     @abstractmethod
     def move_host(self, host: str, path: str):
-        "Move existing hosts"
+        "Move an existing host to a new path"
 
     @abstractmethod
     def get_host_tags(self) -> List[dict]:
