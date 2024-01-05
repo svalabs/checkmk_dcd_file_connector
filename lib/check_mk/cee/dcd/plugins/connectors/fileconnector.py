@@ -1641,36 +1641,20 @@ class FileConnector(Connector):  # pylint: disable=too-few-public-methods
     ) -> str:
         "Get a message describing the changes that have been performed"
         changes_to_hosts = bool(
-            created_host_names or modified_host_names or deleted_host_names
+            created_host_names or modified_host_names or moved_host_names or deleted_host_names
         )
         if changes_to_hosts:
-            if created_host_names and modified_host_names and deleted_host_names:
-                change_message = _("Hosts: %i created, %i modified, %i deleted") % (
-                    len(created_host_names),
-                    len(modified_host_names),
-                    len(deleted_host_names),
-                )
-            elif created_host_names and modified_host_names:
-                change_message = _("Hosts: %i created, %i modified") % (
-                    len(created_host_names),
-                    len(modified_host_names),
-                )
-            elif created_host_names and deleted_host_names:
-                change_message = _("Hosts: %i created, %i deleted") % (
-                    len(created_host_names),
-                    len(deleted_host_names),
-                )
-            elif modified_host_names and deleted_host_names:
-                change_message = _("Hosts: %i modified, %i deleted") % (
-                    len(modified_host_names),
-                    len(deleted_host_names),
-                )
-            elif created_host_names:
-                change_message = _("Hosts: %i created") % len(created_host_names)
-            elif deleted_host_names:
-                change_message = _("Hosts: %i deleted") % len(deleted_host_names)
-            else:
-                change_message = _("Hosts: %i modified") % len(modified_host_names)
+            messages = []
+            if created_host_names:
+                messages.append(_("%i created") % len(created_host_names))
+            if modified_host_names:
+                messages.append(_("%i modified") % len(modified_host_names))
+            if moved_host_names:
+                messages.append(_("%i moved") % len(moved_host_names))
+            if deleted_host_names:
+                messages.append(_("%i deleted") % len(deleted_host_names))
+
+            change_message = _("Hosts: %s") % ", ".join(messages)
         else:
             change_message = _("Nothing changed")
 
