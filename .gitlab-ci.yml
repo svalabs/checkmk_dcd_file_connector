@@ -64,6 +64,9 @@ render info:
     - if: $CI_COMMIT_TAG
       variables:
         VERSION: $CI_COMMIT_TAG
+    # Do not render during MR
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
     - when: always
 
 
@@ -74,10 +77,12 @@ create mkp:
     - job: render info
       artifacts: true
   image: alpine
-  only:
-    - tags
-    - api
-    - web
+  rules:
+    - if: $CI_COMMIT_TAG
+    # when running through a manual start include the commit hash instead of branch name
+    - if: '$CI_PIPELINE_SOURCE == "api" || $CI_PIPELINE_SOURCE == "web"'
+      variables:
+        MKP_FILENAME: 'fileconnector-${CI_COMMIT_SHORT_SHA}.mkp'
   script:
     # Creating required tar files
     - tar -cv -C lib/ -f lib.tar check_mk/
