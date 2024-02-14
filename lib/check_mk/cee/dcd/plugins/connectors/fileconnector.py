@@ -15,6 +15,7 @@
 #
 # Copyright (C) 2021-2024 SVA System Vertrieb Alexander GmbH
 #                         Niko Wenselowski <niko.wenselowski@sva.de>
+#                         Jeronimo Wiederhold <jeronimo.wiederhold@sva.de>
 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -104,8 +105,22 @@ def get_host_label(host: Dict[str, str], hostname_field: str) -> Dict[str, str]:
             return value[6:]
 
         return value
+# more logic, so no dict comprehension for readability
+# tmp = {key.lower(): value for key, value in host.items() if key != hostname_field}
 
-    tmp = {key.lower(): value for key, value in host.items() if key != hostname_field}
+    tmp = {}
+    for key, value in host.items():
+        if key == hostname_field:
+            continue
+
+        if ":sep(" in key:
+            key, sep = re.findall(r"(.*):sep\((.*)\)", key)[0]
+            values = value.split(sep)
+            for value in values:
+                tmp[f"{key}/{value}".lower()] = "true"
+            continue
+
+        tmp[key.lower()] = value
 
     return {
         unlabelify(key): value
@@ -766,7 +781,6 @@ class RestApiClient(HttpApiClient):
         if response.status_code < 400:
             return (True, None)
 
-        # We encountered an error
         json_response = response.json()
         return (False, json_response)
 
